@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="theme-color" content="#2f9e6f" />
+<title>Ma journée — Jérémy</title>
+<link rel="stylesheet" href="chores.css" />
+</head>
+<body>
+<header>
+  <p class="hello" id="hello">Salut 👋</p>
+  <p class="today-day" id="dayName">—</p>
+  <p class="today-date" id="dateLine">—</p>
+  <div class="school-row">
+    <div class="chip" id="chipToday"><span class="lbl">Aujourd'hui</span><span class="val" id="schoolToday">—</span></div>
+    <div class="chip" id="chipTomorrow"><span class="lbl">Demain</span><span class="val" id="schoolTomorrow">—</span></div>
+  </div>
+</header>
+
+<div id="vacBanner" class="vac-banner"></div>
+
+<div class="progress-wrap">
+  <div class="progress-top"><span id="progressText">0 / 0 fait</span><b id="progressPct">0%</b></div>
+  <div class="bar"><span id="progressBar"></span></div>
+</div>
+
+<div id="celebrate" class="celebrate">
+  <div class="big">🎉</div>
+  <div class="msg" id="celebrateMsg">Bravo, tout est fait&nbsp;!</div>
+</div>
+
+<main id="blocks"></main>
+<section id="rules" class="rules"></section>
+
+<footer>
+  Ma journée se remet à zéro toute seule chaque matin.
+  <br /><span class="draft">PROTOTYPE — pictos provisoires (emojis), à remplacer par des images</span>
+</footer>
+
+<script>
+window.CHILD_CONFIG = {
+  key: "jeremy",
+  name: "Jérémy",
+  gradient: "linear-gradient(135deg,#2f9e6f,#56c98e)",
+  hello: "Salut Jérémy",            // ton plus sobre (14 ans)
+  celebrate: "Tout est fait. 💪",
+  veilleuse: false,                 // Jérémy n'a plus de veilleuse
+  schoolWeekdays: [1,2,3,4,5],      // école aussi le mercredi (matin)
+  hairDays: [3,0],                  // cheveux : mercredi + dimanche
+  morningExtra: [
+    {emoji:"🪟", label:"Aérer ma chambre", note:"Ouvrir la fenêtre 5-10 min"}
+  ],
+  sportExtra: [
+    {emoji:"🚴", label:"Faire de l'elliptique", note:"2x/semaine : mercredi & dimanche", days:[3,0]}
+  ],
+  eveningExtra: [
+    {emoji:"🧹", label:"Passer l'aspirateur après le repas"},
+    {emoji:"🧽", label:"Nettoyer la table"},
+    {emoji:"🪜", label:"Passer le balai (escalier + balcon)", note:"Ma tâche · provisoire : samedi", days:[6]},
+    {emoji:"🧼", label:"Vérifier / remettre le niveau des savons", note:"Ma tâche · provisoire : samedi", days:[6]},
+    {emoji:"🧴", label:"Mettre de l'Éparcyl", note:"Ma tâche · provisoire : dimanche", days:[0]}
+  ]
+};
+</script>
+<script src="chores.js"></script>
+</body>
+</html>
