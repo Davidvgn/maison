@@ -122,6 +122,7 @@
 
     // MATIN (tous les jours)
     if(cfg.veilleuse!==false) t.push({block:"matin", emoji:"💡", label:"Éteindre ma veilleuse"});
+    t.push({block:"matin", emoji:"🚻", label:"Aller aux toilettes"});
     t.push({block:"matin", emoji:"🛏️", label:"Faire mon lit"});
     pushExtras(cfg.morningExtra, "matin");
     t.push({block:"matin", emoji:"🤸", label:"Mes exercices du matin", note:"10 jumping jacks · 10 squats · 1 min de gainage"});
@@ -166,6 +167,7 @@
     t.push({block:"soir", emoji:"👚", label:"Préparer mes vêtements pour demain"});
     if(schoolT) t.push({block:"soir", emoji:"⏰", label:"Mettre mon réveil à 6h45 (au plus tard)"}); // veille d'école seulement
     if(schoolT) t.push({block:"soir", emoji:"🎒", label:"Préparer mon sac pour demain"});
+    t.push({block:"soir", emoji:"🚻", label:"Aller aux toilettes avant de me coucher"});
 
     t.forEach(function(task,i){
       task.scope=task.scope||"daily";
