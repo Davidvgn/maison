@@ -21,6 +21,7 @@
   // ---- Règles de la maison (communes à tous) ----
   var RULES = [
     {b:"📵", t:"À 19 h, plus d'écran.", hard:true},
+    {b:"🛏️", t:"Au lit à 20h30 (lecture 30 min). À 21h, lumière éteinte — même si on a pris du retard.", hard:true},
     {b:"🚰", t:"Je vérifie si le lave-vaisselle est sale avant de mettre quelque chose dans l'évier."},
     {b:"🍽️", t:"Je nettoie bien la table quand j'ai fini de manger."},
     {b:"🧺", t:"Je mets mes affaires sales dans la panière à linge sale."}
