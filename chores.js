@@ -20,6 +20,7 @@
 
   // ---- Règles de la maison (communes à tous) ----
   var RULES = [
+    {b:"📵", t:"À 19 h, plus d'écran.", hard:true},
     {b:"🚰", t:"Je vérifie si le lave-vaisselle est sale avant de mettre quelque chose dans l'évier."},
     {b:"🍽️", t:"Je nettoie bien la table quand j'ai fini de manger."},
     {b:"🧺", t:"Je mets mes affaires sales dans la panière à linge sale."}
@@ -207,7 +208,10 @@
     var box=document.getElementById("rules");
     if(!box) return;
     var html='<h2>📋 Les règles de la maison</h2><ul>';
-    RULES.forEach(function(r){ html+='<li><span class="b">'+r.b+'</span><span>'+r.t+'</span></li>'; });
+    RULES.forEach(function(r){
+      if(r.hard){ html+='<li class="hard"><span class="b">'+r.b+'</span><span>'+r.t+'<span class="tag">Non négociable</span></span></li>'; }
+      else { html+='<li><span class="b">'+r.b+'</span><span>'+r.t+'</span></li>'; }
+    });
     html+='</ul>';
     box.innerHTML=html;
   }

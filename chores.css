@@ -67,6 +67,8 @@ header{background:var(--hdr);color:#fff;border-radius:var(--radius);padding:18px
 .rules li{display:flex;gap:10px;align-items:flex-start;font-size:1rem;line-height:1.35;padding:8px 0;border-top:1px solid #f0f3f8;}
 .rules li:first-child{border-top:none;}
 .rules li .b{font-size:1.2rem;flex:none;}
+.rules li.hard{background:#fdecec;border:2px solid #f0b3b3;border-radius:12px;padding:11px 12px;margin:4px 0 8px;color:#a12320;font-weight:800;}
+.rules li.hard .tag{display:inline-block;background:#e0392b;color:#fff;font-size:.66rem;font-weight:800;border-radius:6px;padding:2px 7px;margin-left:8px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle;}
 
 footer{text-align:center;color:#aab6c8;font-size:.75rem;margin-top:26px;}
 .draft{display:inline-block;background:#fff4d6;color:#9a6b00;border:1px solid #ffe39c;border-radius:8px;padding:4px 8px;font-size:.72rem;font-weight:700;margin-top:6px;}
