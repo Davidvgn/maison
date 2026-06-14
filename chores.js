@@ -162,8 +162,8 @@
     t.push({block:"soir", emoji:"⏱️", label:"Me brosser les dents en grand", note:"3 min brosse + 2 min électrique (timer)"});
     t.push({block:"soir", emoji:"✨", label:"Ranger ma chambre"});
     t.push({block:"soir", emoji:"🔌", label:"Brancher tél, ordi et souris en charge"});
-    t.push({block:"soir", emoji:"⏰", label:"Mettre mon réveil à 6h45 (au plus tard)"});
     t.push({block:"soir", emoji:"👚", label:"Préparer mes vêtements pour demain"});
+    if(schoolT) t.push({block:"soir", emoji:"⏰", label:"Mettre mon réveil à 6h45 (au plus tard)"}); // veille d'école seulement
     if(schoolT) t.push({block:"soir", emoji:"🎒", label:"Préparer mon sac pour demain"});
 
     t.forEach(function(task,i){
