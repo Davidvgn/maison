@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="theme-color" content="#5b8def" />
+<title>Ma journée — Liam</title>
+<link rel="stylesheet" href="chores.css" />
+</head>
+<body>
+<header>
+  <p class="hello" id="hello">Salut 👋</p>
+  <p class="today-day" id="dayName">—</p>
+  <p class="today-date" id="dateLine">—</p>
+  <div class="school-row">
+    <div class="chip" id="chipToday"><span class="lbl">Aujourd'hui</span><span class="val" id="schoolToday">—</span></div>
+    <div class="chip" id="chipTomorrow"><span class="lbl">Demain</span><span class="val" id="schoolTomorrow">—</span></div>
+  </div>
+</header>
+
+<div id="vacBanner" class="vac-banner"></div>
+
+<div class="progress-wrap">
+  <div class="progress-top"><span id="progressText">0 / 0 fait</span><b id="progressPct">0%</b></div>
+  <div class="bar"><span id="progressBar"></span></div>
+</div>
+
+<div id="celebrate" class="celebrate">
+  <div class="big">🎉</div>
+  <div class="msg" id="celebrateMsg">Bravo, tout est fait&nbsp;!</div>
+</div>
+
+<main id="blocks"></main>
+<section id="rules" class="rules"></section>
+
+<footer>
+  Ma journée se remet à zéro toute seule chaque matin.
+  <br /><span class="draft">PROTOTYPE — pictos provisoires (emojis), à remplacer par des images</span>
+</footer>
+
+<script>
+window.CHILD_CONFIG = {
+  key: "liam",
+  name: "Liam",
+  gradient: "linear-gradient(135deg,#5b8def,#7aa7f7)",
+  schoolWeekdays: [1,2,4,5],   // lundi, mardi, jeudi, vendredi
+  hairDays: [3,0],             // cheveux : mercredi + dimanche
+  eveningExtra: [
+    {emoji:"🍽️", label:"Débarrasser la table", note:"Avec Nina"},
+    {emoji:"🚽", label:"Mettre les pastilles Canard WC", note:"Ma tâche · provisoire : mercredi & dimanche", days:[3,0]}
+  ]
+};
+</script>
+<script src="chores.js"></script>
+</body>
+</html>
