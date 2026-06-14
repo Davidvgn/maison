@@ -61,6 +61,16 @@ header{background:var(--hdr);color:#fff;border-radius:var(--radius);padding:18px
   border-radius:var(--radius);padding:14px;margin-bottom:14px;font-weight:700;}
 .vac-banner.show{display:block;}
 
+.weather{background:#fff;border:2px solid #eef2f8;border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;box-shadow:var(--shadow);}
+.weather .wx-title{font-size:.95rem;font-weight:800;margin-bottom:8px;}
+.weather .wx-row{display:flex;gap:10px;}
+.weather .wx-cell{flex:1;background:#f4f7fb;border-radius:12px;padding:10px;text-align:center;display:flex;flex-direction:column;gap:2px;}
+.weather .wx-when{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;}
+.weather .wx-emoji{font-size:1.8rem;line-height:1.1;}
+.weather .wx-temp{font-size:1.05rem;font-weight:800;}
+.weather .wx-extra{font-size:.78rem;color:var(--muted);}
+.weather .wx-hint{margin-top:10px;font-size:.95rem;background:#eef6ff;border:1px solid #cfe2fb;border-radius:12px;padding:9px 11px;font-weight:600;color:#243b53;}
+
 .rules{background:#fff;border:2px dashed #cdd8ea;border-radius:var(--radius);padding:14px 16px 6px;margin-top:8px;box-shadow:var(--shadow);}
 .rules h2{font-size:1.05rem;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
 .rules ul{margin:0;padding:0;list-style:none;}

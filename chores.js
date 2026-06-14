@@ -309,7 +309,72 @@
     }catch(e){}
   }
 
+  // ---- Météo (Chindrieux 73310) via Open-Meteo, sans clé API ----
+  var WX_LAT=45.81948, WX_LON=5.85024, WX_CACHE="wxChindrieux";
+  function wxInfo(c){
+    if(c===0) return {e:"☀️",l:"Ensoleillé"};
+    if(c===1) return {e:"🌤️",l:"Plutôt ensoleillé"};
+    if(c===2) return {e:"⛅",l:"Variable"};
+    if(c===3) return {e:"☁️",l:"Couvert"};
+    if(c===45||c===48) return {e:"🌫️",l:"Brouillard"};
+    if(c>=51&&c<=57) return {e:"🌦️",l:"Bruine"};
+    if(c>=61&&c<=67) return {e:"🌧️",l:"Pluie"};
+    if(c>=71&&c<=77) return {e:"🌨️",l:"Neige"};
+    if(c>=80&&c<=82) return {e:"🌦️",l:"Averses"};
+    if(c>=85&&c<=86) return {e:"🌨️",l:"Averses de neige"};
+    if(c>=95) return {e:"⛈️",l:"Orage"};
+    return {e:"🌡️",l:""};
+  }
+  function wxWet(c,p){ return (p!=null && p>=50) || (c>=51 && c<=99); }
+  function wxSnow(c){ return (c>=71&&c<=77)||(c>=85&&c<=86); }
+  function wxHint(tmax,p,c){
+    if(wxSnow(c)) return "Neige ❄️ — habille-toi très chaud + bottes.";
+    var h;
+    if(tmax<5) h="Très froid 🥶 — gros manteau, bonnet, gants.";
+    else if(tmax<12) h="Froid 🧥 — manteau + pull.";
+    else if(tmax<18) h="Frais — pull ou veste.";
+    else if(tmax<25) h="Doux 👕 — t-shirt + une petite veste.";
+    else h="Chaud ☀️ — t-shirt, short, pense à boire.";
+    if(wxWet(c,p)) h+=" Prends un k-way ☔";
+    return h;
+  }
+  function wxRender(daily){
+    var card=document.getElementById("weather"); if(!card) return;
+    function cell(i,when){
+      var c=daily.weather_code[i], tmax=Math.round(daily.temperature_2m_max[i]), tmin=Math.round(daily.temperature_2m_min[i]);
+      var p=daily.precipitation_probability_max?daily.precipitation_probability_max[i]:null;
+      var w=wxInfo(c);
+      return '<div class="wx-cell"><span class="wx-when">'+when+'</span><span class="wx-emoji">'+w.e+'</span>'+
+        '<span class="wx-temp">'+tmax+'° / '+tmin+'°</span>'+
+        '<span class="wx-extra">'+w.l+(p!=null?' · '+p+'% ☔':'')+'</span></div>';
+    }
+    var hasTom=daily.time.length>1, ti=hasTom?1:0;
+    card.innerHTML='<div class="wx-title">🌤️ La météo pour s\'habiller</div>'+
+      '<div class="wx-row">'+cell(0,"Aujourd'hui")+(hasTom?cell(1,"Demain"):'')+'</div>'+
+      '<div class="wx-hint">👕 <b>Demain</b> : '+wxHint(daily.temperature_2m_max[ti], daily.precipitation_probability_max?daily.precipitation_probability_max[ti]:null, daily.weather_code[ti])+'</div>';
+    card.style.display="block";
+  }
+  function loadWeather(){
+    var card=document.getElementById("weather"); if(!card) return;
+    try{ var cc=JSON.parse(localStorage.getItem(WX_CACHE)||"null");
+      if(cc && cc.day===DAILY_K && (Date.now()-cc.ts<3*3600000)){ wxRender(cc.daily); return; } }catch(e){}
+    var url="https://api.open-meteo.com/v1/forecast?latitude="+WX_LAT+"&longitude="+WX_LON+"&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FParis&forecast_days=2";
+    var ctrl=new AbortController(); var to=setTimeout(function(){ctrl.abort();},7000);
+    fetch(url,{signal:ctrl.signal}).then(function(r){return r.json();}).then(function(j){
+      clearTimeout(to);
+      if(j&&j.daily&&j.daily.time&&j.daily.time.length){
+        try{ localStorage.setItem(WX_CACHE, JSON.stringify({ts:Date.now(), day:DAILY_K, daily:j.daily})); }catch(e){}
+        wxRender(j.daily);
+      } else { card.style.display="none"; }
+    }).catch(function(){ clearTimeout(to); card.style.display="none"; });
+  }
+
+  // Carte météo insérée juste sous l'en-tête
+  var wxCard=document.createElement("div"); wxCard.id="weather"; wxCard.className="weather"; wxCard.style.display="none";
+  var hdrEl=document.querySelector("header"); if(hdrEl){ hdrEl.insertAdjacentElement("afterend", wxCard); }
+
   renderRules();
   applyDay();
   refreshVac();
+  loadWeather();
 })();
