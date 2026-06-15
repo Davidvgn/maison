@@ -329,9 +329,9 @@
     if(c>=95) return {e:"⛈️",l:"Orage"};
     return {e:"🌡️",l:""};
   }
-  function wxWet(c,p){ return (p!=null && p>=50) || (c>=51 && c<=99); }
+  function wxRainy(c,p,sum){ return (p!=null && p>=30) || (sum!=null && sum>=1) || (c>=51 && c<=99); }
   function wxSnow(c){ return (c>=71&&c<=77)||(c>=85&&c<=86); }
-  function wxHint(tmax,p,c){
+  function wxHint(tmax,p,c,sum){
     if(wxSnow(c)) return "Neige ❄️ — habille-toi très chaud + bottes.";
     var h;
     if(tmax<5) h="Très froid 🥶 — gros manteau, bonnet, gants.";
@@ -339,7 +339,7 @@
     else if(tmax<18) h="Frais — pull ou veste.";
     else if(tmax<25) h="Doux 👕 — t-shirt + une petite veste.";
     else h="Chaud ☀️ — t-shirt, short, pense à boire.";
-    if(wxWet(c,p)) h+=" Prends un k-way ☔";
+    if(wxRainy(c,p,sum)) h+=" ☔ Et prends un k-way, il peut pleuvoir.";
     return h;
   }
   function wxRender(daily){
@@ -347,22 +347,24 @@
     function cell(i,when){
       var c=daily.weather_code[i], tmax=Math.round(daily.temperature_2m_max[i]), tmin=Math.round(daily.temperature_2m_min[i]);
       var p=daily.precipitation_probability_max?daily.precipitation_probability_max[i]:null;
+      var sum=daily.precipitation_sum?daily.precipitation_sum[i]:null;
       var w=wxInfo(c);
+      var rain=wxRainy(c,p,sum)?(' · ☔ '+(p!=null?p+'%':'pluie')):'';
       return '<div class="wx-cell"><span class="wx-when">'+when+'</span><span class="wx-emoji">'+w.e+'</span>'+
         '<span class="wx-temp">'+tmax+'° / '+tmin+'°</span>'+
-        '<span class="wx-extra">'+w.l+(p!=null?' · '+p+'% ☔':'')+'</span></div>';
+        '<span class="wx-extra">'+w.l+rain+'</span></div>';
     }
     var hasTom=daily.time.length>1, ti=hasTom?1:0;
     card.innerHTML='<div class="wx-title">🌤️ La météo pour s\'habiller</div>'+
       '<div class="wx-row">'+cell(0,"Aujourd'hui")+(hasTom?cell(1,"Demain"):'')+'</div>'+
-      '<div class="wx-hint">👕 <b>Demain</b> : '+wxHint(daily.temperature_2m_max[ti], daily.precipitation_probability_max?daily.precipitation_probability_max[ti]:null, daily.weather_code[ti])+'</div>';
+      '<div class="wx-hint">👕 <b>Demain</b> : '+wxHint(daily.temperature_2m_max[ti], daily.precipitation_probability_max?daily.precipitation_probability_max[ti]:null, daily.weather_code[ti], daily.precipitation_sum?daily.precipitation_sum[ti]:null)+'</div>';
     card.style.display="block";
   }
   function loadWeather(){
     var card=document.getElementById("weather"); if(!card) return;
     try{ var cc=JSON.parse(localStorage.getItem(WX_CACHE)||"null");
       if(cc && cc.day===DAILY_K && (Date.now()-cc.ts<3*3600000)){ wxRender(cc.daily); return; } }catch(e){}
-    var url="https://api.open-meteo.com/v1/forecast?latitude="+WX_LAT+"&longitude="+WX_LON+"&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FParis&forecast_days=2";
+    var url="https://api.open-meteo.com/v1/forecast?latitude="+WX_LAT+"&longitude="+WX_LON+"&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&timezone=Europe%2FParis&forecast_days=2";
     var ctrl=new AbortController(); var to=setTimeout(function(){ctrl.abort();},7000);
     fetch(url,{signal:ctrl.signal}).then(function(r){return r.json();}).then(function(j){
       clearTimeout(to);
