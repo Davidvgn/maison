@@ -130,6 +130,8 @@
     t.push({block:"matin", emoji:"👕", label:"M'habiller"});
     t.push({block:"matin", emoji:"🥣", label:"Préparer mon petit-déj"});
     t.push({block:"matin", emoji:"🍞", label:"Manger mon petit-déj"});
+    t.push({block:"matin", emoji:"🍽️", label:"Débarrasser mon petit-déj"});
+    t.push({block:"matin", emoji:"🧽", label:"Nettoyer ma place à table"});
     t.push({block:"matin", emoji:"🪥", label:"Me brosser les dents"});
     t.push({block:"matin", emoji:"💇", label:"Me coiffer"});
     if(school) t.push({block:"matin", emoji:"🎒", label:"Prendre mon sac d'école"});
@@ -137,7 +139,6 @@
     // EN RENTRANT (jours d'école)
     if(school){
       t.push({block:"rentrant", emoji:"📚", label:"Faire mes devoirs"});
-      t.push({block:"rentrant", emoji:"🧺", label:"Mettre mon linge à laver"});
     }
 
     // MÉNAGE CHAMBRE : mercredi + 1 fois le week-end
@@ -161,8 +162,9 @@
     pushExtras(cfg.eveningExtra, "soir");
     t.push({block:"soir", emoji:"🚿", label:"Prendre ma douche"});
     if(HAIR_DAYS.indexOf(dow)!==-1) t.push({block:"soir", emoji:"🧴", label:"Me laver les cheveux"});
-    t.push({block:"soir", emoji:"⏱️", label:"Me brosser les dents en grand", note:"3 min brosse + 2 min électrique (timer)"});
+    t.push({block:"soir", emoji:"🧺", label:"Mettre mon linge à laver"});
     t.push({block:"soir", emoji:"✨", label:"Ranger ma chambre"});
+    t.push({block:"soir", emoji:"⏱️", label:"Me brosser les dents en grand", note:"3 min brosse + 2 min électrique (timer)"});
     t.push({block:"soir", emoji:"🔌", label:"Brancher tél, ordi, souris et consoles en charge"});
     t.push({block:"soir", emoji:"👚", label:"Préparer mes vêtements pour demain"});
     if(schoolT) t.push({block:"soir", emoji:"⏰", label:"Mettre mon réveil à 6h45 (au plus tard)"}); // veille d'école seulement
