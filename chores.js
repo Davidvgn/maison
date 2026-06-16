@@ -139,6 +139,7 @@
     // EN RENTRANT (jours d'école)
     if(school){
       t.push({block:"rentrant", emoji:"📚", label:"Faire mes devoirs"});
+      pushExtras(cfg.afterSchoolExtra, "rentrant");
     }
 
     // MÉNAGE CHAMBRE : mercredi + 1 fois le week-end
