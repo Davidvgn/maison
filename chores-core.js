@@ -17,7 +17,8 @@
     {b:"🛏️", t:"Au lit à 20h30 (lecture 30 min). À 21h, lumière éteinte — même si on a pris du retard.", hard:true},
     {b:"🚰", t:"Je vérifie si le lave-vaisselle est sale avant de mettre quelque chose dans l'évier."},
     {b:"🍽️", t:"Je nettoie bien la table quand j'ai fini de manger."},
-    {b:"🧺", t:"Je mets mes affaires sales dans la panière à linge sale."}
+    {b:"🧺", t:"Je mets mes affaires sales dans la panière à linge sale."},
+    {b:"👟", t:"Quand je rentre, je range mes chaussures dans le meuble à chaussures."}
   ];
 
   // gate = les tâches du bloc doivent être faites avant d'avoir droit aux écrans
@@ -177,6 +178,7 @@
       t.push({block:"menage", emoji:"🧹", label:"Passer l'aspirateur dans ma chambre", note:"1 fois ce week-end (samedi ou dimanche)", scope:"weekend"});
       t.push({block:"menage", emoji:"🌬️", label:"Faire la poussière", note:"1 fois ce week-end", scope:"weekend"});
       t.push({block:"menage", emoji:"🧽", label:"Passer la lingette", note:"1 fois ce week-end", scope:"weekend"});
+      t.push({block:"menage", emoji:"🗑️", label:"Vider la corbeille de ma chambre", note:"1 fois ce week-end", scope:"weekend"});
       t.push({block:"menage", emoji:"🪟", label:"Nettoyer ma fenêtre (à l'intérieur seulement)", note:"1 fois ce week-end · jamais l'extérieur", scope:"weekend", href:"guide.html?g=fenetre&kid="+cfg.key, linkLabel:"▶ Voir comment faire"});
       if(cfg.managedBy) t.push({block:"menage", emoji:"💬", label:"Écouter le retour de "+cfg.managedBy.name+" sur ma fenêtre", note:"Il est mon manager : je corrige ce qu'il me montre", scope:"weekend"});
       if(cfg.manages) t.push({block:"menage", emoji:"🧑‍🏫", label:"Vérifier la fenêtre de "+cfg.manages.name+" (je suis son manager)", note:"Après que "+cfg.manages.name+" a fini : je contrôle, puis je lui fais mon retour", scope:"weekend", href:"guide.html?g=verif&kid="+cfg.key+"&of="+cfg.manages.key, linkLabel:"▶ Voir quoi vérifier"});
@@ -204,6 +206,8 @@
     }
 
     t.push({block:"avant19", emoji:"🍽️", label:"Vider le lave-vaisselle", note:"D'abord je vérifie qu'il est propre. Si je ne sais pas, j'envoie un SMS pour demander si je dois le faire."});
+
+    t.push({block:"avant19", emoji:"👟", label:"Je vérifie que mes chaussures sont bien rangées dans le meuble à chaussures"});
 
     // LE SOIR (tous les jours) — cuisine/tâches d'abord, puis coucher
     pushExtras(cfg.eveningExtra, "soir");
