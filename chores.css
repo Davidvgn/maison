@@ -68,6 +68,7 @@ header{background:var(--hdr);color:#fff;border-radius:var(--radius);padding:18px
 .weather .wx-when{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;}
 .weather .wx-emoji{font-size:1.8rem;line-height:1.1;}
 .weather .wx-temp{font-size:1.05rem;font-weight:800;}
+.weather .wx-split{font-size:.95rem;}
 .weather .wx-extra{font-size:.78rem;color:var(--muted);}
 .weather .wx-hint{margin-top:10px;font-size:.95rem;background:#eef6ff;border:1px solid #cfe2fb;border-radius:12px;padding:9px 11px;font-weight:600;color:#243b53;}
 
@@ -82,3 +83,17 @@ header{background:var(--hdr);color:#fff;border-radius:var(--radius);padding:18px
 
 footer{text-align:center;color:#aab6c8;font-size:.75rem;margin-top:26px;}
 .draft{display:inline-block;background:#fff4d6;color:#9a6b00;border:1px solid #ffe39c;border-radius:8px;padding:4px 8px;font-size:.72rem;font-weight:700;margin-top:6px;}
+
+.screen-light{color:#fff;border-radius:var(--radius);padding:12px 16px;margin-bottom:12px;box-shadow:var(--shadow);}
+.screen-light .t{font-size:1.25rem;font-weight:800;line-height:1.15;}
+.screen-light .s{font-size:.92rem;margin-top:3px;opacity:.95;}
+.screen-light.red{background:#d6392d;}
+.screen-light.green{background:#2fa968;}
+.screen-light.off{background:#4a5568;}
+.time-banner{display:none;text-align:center;color:#fff;font-weight:800;border-radius:var(--radius);padding:11px 14px;margin-bottom:12px;}
+.time-banner.show{display:block;}
+.time-banner.warn{background:#e0392b;}
+.time-banner.info{background:#e08a1e;}
+
+.task .go{display:inline-block;margin-top:6px;background:#eef6ff;color:#2f6fd0;border:1px solid #cfe2fb;border-radius:10px;padding:4px 10px;font-size:.85rem;font-weight:800;}
+.task.has-link{border-color:#cfe2fb;}
