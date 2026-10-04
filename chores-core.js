@@ -151,7 +151,7 @@
     t.push({block:"matin", emoji:"🍞", label:"Manger mon petit-déj"});
     t.push({block:"matin", emoji:"🍽️", label:"Débarrasser mon petit-déj"});
     t.push({block:"matin", emoji:"🧽", label:"Nettoyer ma place à table"});
-    t.push({block:"matin", emoji:"🪥", label:"Me brosser les dents"});
+    t.push({block:"matin", emoji:"🪥", label:"Me brosser les dents", note:"3 minutes, avec le chrono", href:"guide.html?g=dents_matin&kid="+cfg.key, linkLabel:"▶ Lancer le chrono 3 min"});
     t.push({block:"matin", emoji:"💇", label:"Me coiffer"});
     if(school) t.push({block:"matin", emoji:"🎒", label:"Prendre mon sac d'école"});
 
@@ -208,7 +208,8 @@
     // LE SOIR (tous les jours) — cuisine/tâches d'abord, puis coucher
     pushExtras(cfg.eveningExtra, "soir");
     t.push({block:"soir", emoji:"✨", label:"Ranger ma chambre"});
-    t.push({block:"soir", emoji:"⏱️", label:"Me brosser les dents en grand", note:"3 min brosse + 2 min électrique (timer)"});
+    t.push({block:"soir", emoji:"⏱️", label:"Me brosser les dents en grand", note:"3 min à la main + 2 min à la brosse électrique", href:"guide.html?g=dents_soir&kid="+cfg.key, linkLabel:"▶ Lancer le chrono 3 + 2 min"});
+    t.push({block:"soir", emoji:"🫧", label:"Faire mon bain de bouche", note:"Après le brossage"});
     t.push({block:"soir", emoji:"🔌", label:"Brancher tél, ordi, souris et consoles en charge"});
     if(schoolT) t.push({block:"soir", emoji:"⏰", label:"Mettre mon réveil à 6h45 (au plus tard)"}); // veille d'école seulement
     if(schoolT) t.push({block:"soir", emoji:"🎒", label:"Préparer mon sac pour demain"});

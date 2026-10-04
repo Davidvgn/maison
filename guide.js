@@ -69,6 +69,11 @@
     glass:function(){
       return svg(win({glass:true,sparkle:true})+'<text x="6" y="108" font-size="13" fill="#2fa968" font-weight="bold">✓ dedans</text><text x="130" y="108" font-size="13" fill="#d6392d" font-weight="bold">✗ dehors</text>');
     },
+    teeth:function(electric){
+      return svg('<path d="M70 26 C52 14 40 34 46 58 C50 78 56 96 64 100 C70 104 72 82 78 80 C84 82 86 104 92 100 C100 96 106 78 108 58 C114 34 100 14 82 26 C78 28 74 28 70 26 Z" fill="#fff" stroke="#8793a8" stroke-width="4" stroke-linejoin="round"/>'+
+        '<g transform="rotate(-35 150 70)"><rect x="120" y="62" width="60" height="14" rx="7" fill="'+(electric?'#2f6fd0':'#e08a1e')+'"/><rect x="112" y="55" width="10" height="28" rx="3" fill="#cfd9e8"/></g>'+
+        (electric?'<text x="150" y="30" font-size="26">⚡</text>':'<text x="150" y="30" font-size="26">🪥</text>')+'<text x="20" y="112" font-size="16">✨</text>');
+    },
     feedback:function(){
       return svg('<rect x="8" y="14" width="86" height="48" rx="12" fill="#e9f7ef" stroke="#34c77b" stroke-width="3"/><text x="22" y="46" font-size="22">👍 Bien</text>'+
         '<rect x="106" y="58" width="88" height="48" rx="12" fill="#fff4d6" stroke="#e08a1e" stroke-width="3"/><text x="116" y="90" font-size="19">👉 À mieux</text>');
@@ -100,6 +105,23 @@
     }
   };
 
+  GUIDES.dents_matin={
+    title:"Me brosser les dents (3 min)",
+    intro:"3 minutes, pas moins. Je lance le chrono et je brosse toutes mes dents.",
+    timer:[{label:"Je me brosse les dents",sec:180,tick:0}],
+    steps:[{scene:"teeth", title:"Me brosser les dents, 3 minutes", text:"Je brosse toutes les dents, en haut et en bas, devant et derrière. J'arrête quand le chrono sonne.", ck:"J'ai brossé 3 minutes"}]
+  };
+  GUIDES.dents_soir={
+    title:"Me brosser les dents en grand",
+    intro:"5 minutes en tout : 3 minutes à la main, puis 2 minutes à la brosse électrique. Ensuite, le bain de bouche.",
+    timer:[{label:"Brosse à la main",sec:180,tick:0},{label:"Brosse électrique",sec:120,tick:1}],
+    steps:[
+      {scene:"teeth", title:"1 · À la main, 3 minutes", text:"Je brosse toutes mes dents à la main.", ck:"3 minutes à la main : fait"},
+      {scene:"teethE", title:"2 · À la brosse électrique, 2 minutes", text:"Je passe la brosse électrique sur toutes mes dents. Ensuite, je fais mon bain de bouche.", ck:"2 minutes à la brosse électrique : fait"}
+    ]
+  };
+  SCENES.teethE=function(){ return SCENES.teeth(true); };
+
   var gd=GUIDES[g];
   if(!gd){ document.getElementById("steps").innerHTML="<p>Guide inconnu.</p>"; return; }
   function val(x){ return typeof x==="function"?x():x; }
@@ -121,6 +143,52 @@
       '<div class="gck'+(get(i)?' on':'')+'" data-i="'+i+'">'+(get(i)?'✓ ':'')+st.ck+'</div></div>';
   }
   document.getElementById("steps").innerHTML=html;
+
+  // ---- Chrono enchaîné (guides qui ont un champ timer) ----
+  var tick=null, audio=null;
+  function beep(){
+    try{
+      var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+      if(!audio) audio=new AC();
+      var o=audio.createOscillator(), gn=audio.createGain();
+      o.connect(gn); gn.connect(audio.destination); o.frequency.value=880; gn.gain.value=0.2;
+      o.start(0); o.stop(audio.currentTime+0.4);
+    }catch(e){}
+    try{ if(navigator.vibrate) navigator.vibrate(300); }catch(e2){}
+  }
+  function mmss(n){ var m=Math.floor(n/60), s=n%60; return m+":"+(s<10?"0":"")+s; }
+  function setCk(idx,on){
+    set(idx,on);
+    var el=document.querySelector('.gck[data-i="'+idx+'"]');
+    if(el){ el.className="gck"+(on?" on":""); el.textContent=(on?"✓ ":"")+gd.steps[idx].ck; }
+    refresh();
+  }
+  if(gd.timer){
+    var tbox=document.createElement("div"); tbox.className="gstep";
+    tbox.innerHTML='<h2>⏱️ Chrono</h2><button class="gbtn" id="tGo">▶ Lancer le chrono</button>'+
+      '<div class="gtimer" id="tBox"><div class="lbl"></div><div class="big"></div><div class="nx"></div><button class="gstop">■ Arrêter</button></div>';
+    var stepsEl=document.getElementById("steps");
+    stepsEl.insertBefore(tbox, stepsEl.children[1]);
+    var box=document.getElementById("tBox");
+    function stopT(){ if(tick){ clearInterval(tick); tick=null; } box.className="gtimer"; }
+    box.querySelector(".gstop").onclick=stopT;
+    document.getElementById("tGo").onclick=function(){
+      stopT();
+      try{ var AC=window.AudioContext||window.webkitAudioContext; if(AC && !audio) audio=new AC(); }catch(e){}
+      var list=gd.timer, idx=0, big=box.querySelector(".big"), lbl=box.querySelector(".lbl"), nx=box.querySelector(".nx");
+      function begin(){
+        if(idx>=list.length){ box.className="gtimer show end"; lbl.textContent="Terminé !"; big.textContent="✓"; nx.textContent=""; tick=null; return; }
+        var it=list[idx], left=it.sec;
+        box.className="gtimer show"; lbl.textContent=it.label; big.textContent=mmss(left);
+        nx.textContent=(idx+1<list.length)?"Ensuite : "+list[idx+1].label:"";
+        tick=setInterval(function(){
+          left--; big.textContent=mmss(left);
+          if(left<=0){ clearInterval(tick); tick=null; beep(); setCk(it.tick,true); idx++; begin(); }
+        },1000);
+      }
+      begin();
+    };
+  }
 
   function refresh(){
     var left=0, j;
