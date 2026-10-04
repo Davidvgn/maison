@@ -37,8 +37,8 @@
       {head:[40,36], lines:[[[44,44],[30,66]],[[30,66],[56,66],[56,92]],[[44,46],[66,48]]], w:[[68,48]]}
     ],
     epaules:[
-      {head:[50,22], lines:[[[50,31],[50,62]],[[50,62],[40,92]],[[50,62],[60,92]],[[50,34],[34,42],[34,28]],[[50,34],[66,42],[66,28]]], w:[[34,25],[66,25]]},
-      {head:[50,22], lines:[[[50,31],[50,62]],[[50,62],[40,92]],[[50,62],[60,92]],[[50,34],[38,22],[40,6]],[[50,34],[62,22],[60,6]]], w:[[40,11],[60,11]]}
+      {head:[50,22], lines:[[[50,31],[50,62]],[[50,62],[40,92]],[[50,62],[60,92]],[[50,34],[40,62]],[[50,34],[60,62]]], w:[[40,64],[60,64]]},
+      {head:[50,22], lines:[[[50,31],[50,62]],[[50,62],[40,92]],[[50,62],[60,92]],[[50,34],[20,34]],[[50,34],[80,34]]], w:[[18,34],[82,34]]}
     ],
     planche:[
       {head:[14,62], lines:[[[22,66],[56,76],[90,88]],[[24,68],[24,88],[40,88]]]}
@@ -83,12 +83,12 @@
     }
     return h+'</div>';
   }
-  var DESC={abdos:"Allongé sur les coudes, je lève les jambes tendues"};
+  var DESC={abdos:"Allongé sur les coudes, je lève les jambes tendues", epaules:"Bras tendus, je les lève sur les côtés jusqu'à hauteur des épaules"};
   var WT=sp.sportWeights||cfg.sportWeights||{}, WN=cfg.sportNotes||{};
   function exo(name,k,nb){
     var w=WT[k]||"";
     return '<div class="exo"><div class="in">'+frames(k,w)+'<div class="nm">'+name+'</div><div class="nb">'+nb+'</div>'+
-      (DESC[k]?'<div class="wt">'+DESC[k]+'</div>':'<div class="wt">'+(w?'🏋️ '+w:'Sans poids')+'</div>')+(WN[k]?'<div class="wn">'+WN[k]+'</div>':'')+'</div></div>';
+      (DESC[k]?'<div class="wn">'+DESC[k]+'</div>':'')+(w?'<div class="wt">🏋️ '+w+'</div>':(DESC[k]?'':'<div class="wt">Sans poids</div>'))+(WN[k]?'<div class="wn">'+WN[k]+'</div>':'')+'</div></div>';
   }
 
   // ---- Page ----
