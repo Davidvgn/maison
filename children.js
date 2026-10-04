@@ -40,7 +40,7 @@ window.CHILDREN = {
   liam: {
     key: "liam",
     sport: {rounds:5, reps:2, plankSets:3, plankSec:5, plankPause:30, jjSets:3, jjReps:10, jjPause:60},   // Liam : 2 répétitions, planche de 5 s
-    sportWeights: {abdos:"", biceps:"petit poids", epaules:"petit poids", squats:"kettlebell 2 kg"},
+    sportWeights: {abdos:"", biceps:"petit poids", epaules:"petit poids", squats:""},
     manages: {key:"nina", name:"Nina"},   // Liam vérifie la fenêtre de Nina
     managedBy: {name:"Jérémy"},           // Jérémy vérifie la fenêtre de Liam
     name: "Liam",
