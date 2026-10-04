@@ -41,26 +41,12 @@
 </footer>
 
 <script>
-window.CHILD_CONFIG = {
-  key: "nina",
-  name: "Nina",
-  gradient: "linear-gradient(135deg,#d56fae,#ef9ad0)",
-  schoolWeekdays: [1,2,4,5],   // lundi, mardi, jeudi, vendredi
-  hairDays: [3,0],             // cheveux : mercredi + dimanche
-  toiletteNote: "Me laver les mains et le visage", // pas de déo (8 ans) — à ajuster si besoin
-  morningExtra: [
-    {emoji:"🧃", label:"Préparer ma gourde et mon goûter, et les mettre dans mon sac", note:"Eau dans la gourde + goûter dans la boîte", schoolOnly:true}
-  ],
-  afterSchoolExtra: [
-    {emoji:"🍶", label:"Poser ma gourde et ma boîte à goûter dans la cuisine"}
-  ],
-  eveningExtra: [
-    {emoji:"🍽️", label:"Débarrasser la table", note:"Avec Liam"},
-    {emoji:"🌸", label:"Mettre du Febreze (rideaux + maison)", note:"Ma tâche · provisoire : samedi", days:[6]},
-    {emoji:"🦉", label:"Faire mon Duolingo"}
-  ]
-};
+(function(){
+  window.CHILD_KEY="nina";
+  var q=["children.js","chores-core.js","chores.js"], t=Date.now();
+  function next(){ if(!q.length) return; var s=document.createElement("script"); s.src=q.shift()+(location.protocol==="file:"?"":"?t="+t); s.onload=next; document.body.appendChild(s); }
+  next();
+})();
 </script>
-<script>var _s=document.createElement('script');_s.src='chores.js?t='+Date.now();document.body.appendChild(_s);</script>
 </body>
 </html>

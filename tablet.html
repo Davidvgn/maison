@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<title>Tablette de la cuisine</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;
+    background:#1b2433;color:#23304a;display:flex;flex-direction:column;overflow:hidden;
+    -webkit-user-select:none;user-select:none;}
+
+  #top{flex:none;display:flex;align-items:center;padding:10px 18px;color:#fff;}
+  #clock{font-size:2.6rem;font-weight:800;margin-right:18px;}
+  #date{font-size:1.1rem;opacity:.85;text-transform:capitalize;}
+  #banner{margin-left:auto;font-size:1.05rem;font-weight:800;padding:8px 14px;border-radius:12px;background:#33415c;}
+  #banner.warn{background:#e0392b;}
+  #banner.info{background:#e08a1e;}
+
+  #cols{flex:1;display:flex;min-height:0;padding:0 8px 8px;}
+  .col{flex:1;min-width:0;margin:0 6px;background:#f4f7fb;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;}
+  .col-head{flex:none;color:#fff;padding:10px 14px;display:flex;align-items:center;}
+  .col-name{font-size:1.7rem;font-weight:800;}
+  .col-day{margin-left:auto;font-size:.85rem;font-weight:700;background:rgba(255,255,255,.22);border-radius:10px;padding:4px 9px;}
+
+  .light{flex:none;padding:12px 14px;color:#fff;}
+  .light .t{font-size:1.35rem;font-weight:800;line-height:1.15;}
+  .light .s{font-size:.95rem;margin-top:3px;opacity:.95;}
+  .light.red{background:#d6392d;}
+  .light.green{background:#2fa968;}
+  .light.off{background:#4a5568;}
+
+  .list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 8px 14px;}
+  .sec{font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#6b7a90;margin:10px 4px 6px;}
+  .task{display:flex;align-items:center;background:#fff;border:2px solid #e3e9f2;border-radius:14px;
+    padding:9px 10px;margin-bottom:7px;cursor:pointer;}
+  .task:active{background:#eef6ff;}
+  .task .emoji{font-size:1.6rem;width:38px;text-align:center;flex:none;}
+  .task .label{flex:1;font-size:1.02rem;font-weight:700;line-height:1.2;padding:0 8px;}
+  .task .note{display:block;font-size:.76rem;color:#6b7a90;font-weight:500;margin-top:2px;}
+  .task .check{width:30px;height:30px;flex:none;border-radius:50%;border:3px solid #cfd9e8;background:#fff;
+    text-align:center;line-height:24px;font-size:1.1rem;color:transparent;}
+  .task.done{background:#e9f7ef;border-color:#34c77b;padding-top:5px;padding-bottom:5px;opacity:.8;}
+  .task.done .emoji{font-size:1.25rem;}
+  .task.done .note{display:none;}
+  .task.done .label{color:#1f8a55;text-decoration:line-through;}
+  .task.done .check{background:#34c77b;border-color:#34c77b;color:#fff;}
+  .task .go{display:inline-block;margin-top:5px;background:#eef6ff;color:#2f6fd0;border:1px solid #cfe2fb;border-radius:10px;padding:3px 9px;font-size:.8rem;font-weight:800;}
+  .task.urgent{border-color:#e08a1e;background:#fff6e8;}
+  .fold{font-size:.9rem;font-weight:800;color:#1f8a55;background:#e9f7ef;border-radius:12px;padding:9px 12px;margin:8px 0;cursor:pointer;text-align:center;}
+  .later{font-size:.85rem;color:#6b7a90;text-align:center;margin:12px 0 4px;}
+
+  #wx{flex:none;display:none;margin:0 14px 10px;background:#2a3650;border-radius:16px;padding:8px 12px;color:#fff;}
+  #wx .wx-title{display:none;}
+  #wx .wx-row{display:flex;}
+  #wx .wx-cell{flex:1;display:flex;align-items:center;margin:0 4px;}
+  #wx .wx-when{font-size:.8rem;font-weight:800;text-transform:uppercase;opacity:.8;width:92px;}
+  #wx .wx-emoji{font-size:1.8rem;margin:0 10px;}
+  #wx .wx-split{font-size:1.05rem;}
+  #wx .wx-extra{font-size:.85rem;opacity:.85;margin-left:10px;}
+  #wx .wx-hint{margin-top:6px;font-size:.95rem;font-weight:700;background:#33415c;border-radius:10px;padding:6px 10px;}
+  #cols.home{align-items:stretch;justify-content:center;padding:10px 18px 22px;}
+  .card{flex:1;max-width:340px;margin:0 8px;border-radius:26px;color:#fff;cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:18px 14px;box-shadow:0 6px 18px rgba(0,0,0,.35);}
+  .card:active{opacity:.85;}
+  .card .face{font-size:4.2rem;line-height:1;}
+  .card .nm{font-size:2.2rem;font-weight:800;margin:10px 0 14px;}
+  .card .mini{background:rgba(0,0,0,.28);border-radius:16px;padding:10px 12px;width:100%;}
+  .card .mini .t{font-size:1.15rem;font-weight:800;line-height:1.2;}
+  .card .mini .s{font-size:.85rem;margin-top:3px;opacity:.95;}
+  .card .mini.red{background:#d6392d;}
+  .card .mini.green{background:#2fa968;}
+  .card .mini.off{background:#4a5568;}
+  #cols.one{justify-content:center;}
+  #cols.one .col{max-width:720px;}
+  #back{display:none;font-size:1.05rem;font-weight:800;color:#fff;background:#33415c;border-radius:12px;padding:9px 14px;margin-right:16px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="top">
+  <div id="back">← Accueil</div>
+  <div id="clock">--:--</div>
+  <div id="date"></div>
+  <div id="banner"></div>
+</div>
+<div id="wx"></div>
+<div id="cols"></div>
+
+<script>
+(function(){
+  var q=["children.js","chores-core.js"], t=Date.now();
+  function next(){
+    if(!q.length){ start(); return; }
+    var s=document.createElement("script"); s.src=q.shift()+(location.protocol==="file:"?"":"?t="+t); s.onload=next; document.body.appendChild(s);
+  }
+  next();
+
+  function start(){
+    "use strict";
+    var C=window.Chores, KIDS=["jeremy","liam","nina"];
+    var FACES={jeremy:"🧑", liam:"👦", nina:"👧"};
+    var loadedKey=C.dateKey(C.now());
+    var expanded={};   // enfant -> true si « faites » dépliées
+    var colsEl=document.getElementById("cols");
+    var backEl=document.getElementById("back");
+    var m=/[?&]kid=([a-z]+)/.exec(location.search);
+    var current=(m && window.CHILDREN[m[1]])?m[1]:null;   // null = accueil
+    var lastTouch=Date.now();
+
+    function el(tag, cls, html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+    function go(k){ current=k; lastTouch=Date.now(); render(); }
+    backEl.onclick=function(){ go(null); };
+
+    var status=C.screenStatus;
+
+    function info(k, now, tomorrow, h){
+      var cfg=window.CHILDREN[k];
+      var tasks=C.buildTasks(cfg, now, tomorrow);
+      function done(t){ return C.isDone(k,t,now); }
+      var gateLeft=tasks.filter(function(t){return t.gate && !done(t);}).length;
+      return {cfg:cfg, tasks:tasks, done:done, st:status(h,gateLeft), ds:C.dayState(now,cfg)};
+    }
+
+    function renderHome(now, tomorrow, h){
+      colsEl.className="home";
+      KIDS.forEach(function(k){
+        var i=info(k,now,tomorrow,h);
+        var card=el("div","card",
+          "<div class='face'>"+FACES[k]+"</div><div class='nm'>"+i.cfg.name+"</div>"+
+          "<div class='mini "+i.st.k+"'><div class='t'>"+i.st.t+"</div><div class='s'>"+i.st.s+"</div></div>");
+        card.style.background=i.cfg.gradient;
+        card.onclick=function(){ go(k); };
+        colsEl.appendChild(card);
+      });
+    }
+
+    function renderChild(k, now, tomorrow, h){
+      colsEl.className="one";
+      var i=info(k,now,tomorrow,h), cfg=i.cfg, done=i.done;
+      var shown0=i.tasks.filter(function(t){ return t.block!=="soir" || h>=19; });
+      var col=el("div","col");
+      var head=el("div","col-head","<span class='col-name'>"+cfg.name+"</span><span class='col-day'>"+i.ds.val+" · "+shown0.filter(done).length+"/"+shown0.length+"</span>");
+      head.style.background=cfg.gradient;
+      col.appendChild(head);
+      col.appendChild(el("div","light "+i.st.k,"<div class='t'>"+i.st.t+"</div><div class='s'>"+i.st.s+"</div>"));
+
+      var list=el("div","list");
+      var shown=i.tasks.filter(function(t){ return t.block!=="soir" || h>=19; });
+      var todo=shown.filter(function(t){return !done(t);});
+
+      function addTask(t){
+        var d=done(t);
+        var urgent=(t.block==="avant19" && !d && h>=18);
+        var row=el("div","task"+(d?" done":"")+(urgent?" urgent":""),
+          "<div class='emoji'>"+t.emoji+"</div><div class='label'>"+t.label+(t.note?"<span class='note'>"+t.note+"</span>":"")+(t.href?"<span class='go'>"+(t.linkLabel||"▶ Voir")+"</span>":"")+"</div><div class='check'>✓</div>");
+        function toggle(){ C.setDone(k,t,now,!d); lastTouch=Date.now(); render(); }
+        if(t.href){
+          row.onclick=function(){ location.href=C.linkTo(t.href, "tablet.html?kid="+k+C.dateParams().replace(/^&/,"&")); };
+          row.querySelector(".check").onclick=function(e){ e.stopPropagation(); toggle(); };
+        } else { row.onclick=toggle; }
+        list.appendChild(row);
+      }
+
+      // Toutes les tâches restent affichées à leur place : une tâche cochée par erreur reste visible
+      // et on peut la décocher d'un toucher. L'ordre ne bouge jamais sous le doigt.
+      var lastBlock=null;
+      shown.forEach(function(t){
+        if(t.block!==lastBlock){
+          var bi=null; C.BLOCKS.forEach(function(b){ if(b.key===t.block) bi=b; });
+          list.appendChild(el("div","sec",bi.emoji+" "+bi.title+(bi.sub?" · "+bi.sub:"")));
+          lastBlock=t.block;
+        }
+        addTask(t);
+      });
+      if(todo.length===0) list.appendChild(el("div","later","🎉 Tout est fait pour le moment"));
+      if(h<19) list.appendChild(el("div","later","Le soir : les tâches s'affichent à 19 h"));
+
+      col.appendChild(list);
+      colsEl.appendChild(col);
+    }
+
+    function render(){
+      var scroll=0, old=colsEl.querySelector(".list");
+      if(old) scroll=old.scrollTop;
+
+      var now=C.now(), tomorrow=C.addDays(now,1);
+      var h=now.getHours()+now.getMinutes()/60;
+      document.getElementById("clock").textContent=C.pad2(now.getHours())+":"+C.pad2(now.getMinutes());
+      document.getElementById("date").textContent=C.DAY_NAMES[now.getDay()]+" "+now.getDate()+" "+C.MONTHS[now.getMonth()];
+      backEl.style.display=current?"block":"none";
+
+      var banner=document.getElementById("banner");
+      banner.className=""; banner.textContent="";
+      var tb=C.timeBanner(h); if(tb){ banner.textContent=tb.t; banner.className=tb.k; }
+
+      colsEl.innerHTML="";
+      if(current) renderChild(current,now,tomorrow,h); else renderHome(now,tomorrow,h);
+      var nl=colsEl.querySelector(".list"); if(nl) nl.scrollTop=scroll;
+    }
+
+    render();
+    C.refreshVac(render);
+    function showWeather(){
+      C.loadWeather(C.dateKey(C.now()),function(days){
+        var w=document.getElementById("wx");
+        if(days){ w.innerHTML=C.renderWeather(days); w.style.display="block"; }
+      });
+    }
+    showWeather();
+    setInterval(showWeather, 3*3600000);
+    setInterval(function(){
+      if(C.dateKey(C.now())!==loadedKey && location.search.indexOf("date=")===-1){ location.reload(); return; }
+      if(current && Date.now()-lastTouch>90000) current=null;   // retour auto à l'accueil
+      render();
+    }, 20000);
+  }
+})();
+</script>
+</body>
+</html>
