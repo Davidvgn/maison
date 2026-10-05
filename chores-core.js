@@ -186,10 +186,12 @@
 
     // SPORT : circuit du jour (ouvre la page d'exercices de l'enfant)
     var sp=cfg.sport||{};
+    var sportMust=(dow===3||dow===0);   // obligatoire : mercredi et dimanche
     t.push({block:"sport", emoji:"🏋️", label:"Mon circuit sport du jour",
-      note:(sp.rounds||5)+" tours × "+(sp.reps||10)+" de chaque exercice · planche "+(sp.plankSets||3)+" × "+(sp.plankSec||45)+" s · "+(sp.jjSets||3)+" × "+(sp.jjReps||10)+" jumping jacks",
+      note:(sp.rounds||5)+" tours × "+(sp.reps||10)+" de chaque exercice · planche "+(sp.plankSets||3)+" × "+(sp.plankSec||45)+" s · "+(sp.jjSets||3)+" × "+(sp.jjReps||10)+" jumping jacks"+(sportMust?"":" · si j'en ai envie"),
+      optional:!sportMust,
       href:"sport.html?kid="+cfg.key, linkLabel:"▶ Voir les exercices"});
-    if(isWeekend) t.push({block:"sport", emoji:"🏃", label:"Bouger dehors en plus", note:"Bouger pour de vrai (vélo, foot, balade active...)"});
+    if(isWeekend) t.push({block:"sport", emoji:"🏃", label:"Bouger dehors en plus", note:"Bouger pour de vrai (vélo, foot, balade active...) · si j'en ai envie", optional:true});
     pushExtras(cfg.sportExtra, "sport");
 
     // AVANT 19 H : douche (+ cheveux), entre 18 h et 19 h
@@ -222,7 +224,7 @@
 
     t.forEach(function(task,i){
       task.scope=task.scope||"daily";
-      task.gate=!!blockInfo(task.block).gate;
+      task.gate=!!blockInfo(task.block).gate && !task.optional;
       task.id=task.block+"_"+i+"_"+task.label.replace(/[^a-zA-Z]/g,"").slice(0,10);
     });
     return t;

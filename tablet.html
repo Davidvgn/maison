@@ -49,6 +49,8 @@
   .task.done .label{color:#1f8a55;text-decoration:line-through;}
   .task.done .check{background:#34c77b;border-color:#34c77b;color:#fff;}
   .task .go{display:inline-block;margin-top:5px;background:#eef6ff;color:#2f6fd0;border:1px solid #cfe2fb;border-radius:10px;padding:3px 9px;font-size:.8rem;font-weight:800;}
+  .task.optional{border-style:dashed;}
+  .task .opt{display:inline-block;margin-left:8px;background:#eef2f8;color:#6b7a90;border-radius:8px;padding:1px 7px;font-size:.7rem;font-weight:800;vertical-align:middle;}
   .task.urgent{border-color:#e08a1e;background:#fff6e8;}
   .fold{font-size:.9rem;font-weight:800;color:#1f8a55;background:#e9f7ef;border-radius:12px;padding:9px 12px;margin:8px 0;cursor:pointer;text-align:center;}
   .later{font-size:.85rem;color:#6b7a90;text-align:center;margin:12px 0 4px;}
@@ -140,7 +142,7 @@
     function renderChild(k, now, tomorrow, h){
       colsEl.className="one";
       var i=info(k,now,tomorrow,h), cfg=i.cfg, done=i.done;
-      var shown0=i.tasks.filter(function(t){ return t.block!=="soir" || h>=19; });
+      var shown0=i.tasks.filter(function(t){ return (t.block!=="soir" || h>=19) && !t.optional; });
       var col=el("div","col");
       var head=el("div","col-head","<span class='col-name'>"+cfg.name+"</span><span class='col-day'>"+i.ds.val+" · "+shown0.filter(done).length+"/"+shown0.length+"</span>");
       head.style.background=cfg.gradient;
@@ -149,13 +151,13 @@
 
       var list=el("div","list");
       var shown=i.tasks.filter(function(t){ return t.block!=="soir" || h>=19; });
-      var todo=shown.filter(function(t){return !done(t);});
+      var todo=shown.filter(function(t){return !done(t) && !t.optional;});
 
       function addTask(t){
         var d=done(t);
         var urgent=(t.block==="avant19" && !d && h>=18);
-        var row=el("div","task"+(d?" done":"")+(urgent?" urgent":""),
-          "<div class='emoji'>"+t.emoji+"</div><div class='label'>"+t.label+(t.note?"<span class='note'>"+t.note+"</span>":"")+(t.href?"<span class='go'>"+(t.linkLabel||"▶ Voir")+"</span>":"")+"</div><div class='check'>✓</div>");
+        var row=el("div","task"+(d?" done":"")+(urgent?" urgent":"")+(t.optional?" optional":""),
+          "<div class='emoji'>"+t.emoji+"</div><div class='label'>"+t.label+(t.optional?"<span class='opt'>Facultatif</span>":"")+(t.note?"<span class='note'>"+t.note+"</span>":"")+(t.href?"<span class='go'>"+(t.linkLabel||"▶ Voir")+"</span>":"")+"</div><div class='check'>✓</div>");
         function toggle(){ C.setDone(k,t,now,!d); lastTouch=Date.now(); render(); }
         if(t.href){
           row.onclick=function(){ location.href=C.linkTo(t.href, "tablet.html?kid="+k+C.dateParams().replace(/^&/,"&")); };
