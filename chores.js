@@ -37,7 +37,8 @@
   }
 
   function updateProgress(){
-    var total=tasks.length, done=tasks.filter(isDone).length;
+    var req=tasks.filter(function(t){return !t.optional;});   // les tâches facultatives ne comptent pas
+    var total=req.length, done=req.filter(isDone).length;
     var pct=total?Math.round(done/total*100):0;
     document.getElementById("progressText").textContent=done+" / "+total+" fait";
     document.getElementById("progressPct").textContent=pct+"%";
@@ -93,9 +94,9 @@
       items.forEach(function(task){
         var done=isDone(task);
         var el=document.createElement("div");
-        el.className="task"+(done?" done":"")+(task.href?" has-link":"");
+        el.className="task"+(done?" done":"")+(task.href?" has-link":"")+(task.optional?" optional":"");
         el.innerHTML='<div class="emoji">'+task.emoji+'</div>'+
-          '<div class="label">'+task.label+(task.note?'<span class="note">'+task.note+'</span>':'')+(task.href?'<span class="go">'+(task.linkLabel||'▶ Voir')+'</span>':'')+'</div>'+
+          '<div class="label">'+task.label+(task.optional?'<span class="opt">Facultatif</span>':'')+(task.note?'<span class="note">'+task.note+'</span>':'')+(task.href?'<span class="go">'+(task.linkLabel||'▶ Voir')+'</span>':'')+'</div>'+
           '<div class="check">✓</div>';
         function toggle(){
           var now=!el.classList.contains("done");

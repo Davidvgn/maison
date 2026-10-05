@@ -97,3 +97,6 @@ footer{text-align:center;color:#aab6c8;font-size:.75rem;margin-top:26px;}
 
 .task .go{display:inline-block;margin-top:6px;background:#eef6ff;color:#2f6fd0;border:1px solid #cfe2fb;border-radius:10px;padding:4px 10px;font-size:.85rem;font-weight:800;}
 .task.has-link{border-color:#cfe2fb;}
+
+.task.optional{border-style:dashed;}
+.task .opt{display:inline-block;margin-left:8px;background:#eef2f8;color:#6b7a90;border-radius:8px;padding:1px 7px;font-size:.72rem;font-weight:800;vertical-align:middle;}
