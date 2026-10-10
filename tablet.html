@@ -87,6 +87,7 @@
   /* La maison : boutons des parents (lave-vaisselle, sèche-linge, étendage) */
   #house{flex:none;display:none;margin:0 14px 10px;}
   #house.show{display:block;}
+  #house .hh{color:#cfd8e6;font-size:.85rem;font-weight:700;margin:0 2px 2px;}
   #house .tiles{display:flex;flex-wrap:wrap;margin:0 -4px;}
   #house .tile{flex:1 1 150px;margin:4px;background:#2a3650;border-radius:16px;padding:10px 12px;color:#fff;display:flex;flex-direction:column;}
   #house .tile.busy{background:#8a5a14;}
@@ -266,6 +267,7 @@
       box.innerHTML="";
       box.className=on?"show":"";
       if(!on) return;
+      var head=el("div","hh"); head.textContent="🏡 La maison · appuie sur le bouton vert quand tu lances une machine"; box.appendChild(head);
       var wrap=el("div","tiles");
       H.tiles().forEach(function(t){
         var tile=el("div","tile"+(t.busy?" busy":""));
