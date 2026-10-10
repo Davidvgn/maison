@@ -110,6 +110,8 @@ Vérifie-les avec le **Rules Playground** (bouton dans l'éditeur de règles, «
 | écriture | `/shop/inbox/abc1` | UID de Liam | `"Chips|liam"` | ✅ autorisé |
 | suppression | `/shop/inbox` (tout le groupe) | UID de Liam | | ❌ refusé |
 | suppression | `/shop/inbox` | UID famille | | ✅ autorisé |
+| écriture | `/shop/note/brosseadents` | UID famille | `"Jérémy"` | ✅ autorisé |
+| écriture | `/shop/note/brosseadents` | UID de Liam | `"Jérémy"` | ❌ refusé |
 | lecture | `/shop` | UID de Liam | | ✅ autorisé |
 | lecture | `/shop` | non authentifié | | ❌ refusé |
 
@@ -184,6 +186,8 @@ Une liste partagée, par rayon, pour les parents ; les enfants peuvent y **ajout
   - Le « pris » est une valeur de la base comme le reste : aucune règle supplémentaire.
   - « Terminer les courses » retire les lignes prises **telles que l'appareil les voit à cet instant**. Si l'autre parent vient de remettre une ligne dans « À prendre » pendant ce temps (quelques secondes, ou plus si l'un de vous est hors réseau), elle part avec les autres : il suffit de la rajouter.
   - Sur la tablette de la cuisine (compte `famille`), un enfant qui ouvre la tuile « 🛒 Courses » a les mêmes droits qu'un parent : prendre, retirer, vider. La limite « ajouter sans toucher à la liste finale » ne vaut que pour les téléphones des enfants (comptes `jeremy`, `liam`, `nina`) ; c'est à surveiller, comme pour la maison.
+- **Précision** (texte libre, jusqu'à 60 caractères, parents seulement) : elle s'attache à une **ligne de la liste**, pas à l'article. Exemple : « Brosse à dents » avec la précision « Jérémy » cette semaine, « Nina » la semaine prochaine. Dans « Préparer », un appui sur le nom d'une ligne ouvre la précision (« ＋ précision » quand il n'y en a pas) ; le champ « Précision » à côté de la recherche la remplit au moment de l'ajout, et un deuxième ajout du même article la complète (« Jérémy, Nina », quantité 2). Elle s'affiche en gras sous le nom dans « En magasin » et chez les enfants, et disparaît avec la ligne (« Terminer », ✕, « Vider »). Données : `/shop/note/<id>`.
+- Les noms d'articles prennent une majuscule en première lettre à la création et au renommage ; la recherche ne distingue ni majuscules, ni accents, ni trait d'union (« lave vaisselle » trouve « Lave-vitre » et « Sel lave-vaisselle »).
 - Le catalogue se remplit au fur et à mesure : quand tu cherches un article qui n'existe pas, « ➕ Créer » te demande son rayon.
 - Les rayons sont communs aux quatre magasins (Leclerc, Intermarché, Super U, Carrefour) ; l'ordre est fixe, défini dans `shop.js` (`SECTIONS`).
 - Un enfant ne peut créer que la demande d'un article **déjà dans le catalogue**, à son nom, non prise, de 1 à 20 ; pas de modification ni de suppression. Les propositions libres arrivent dans « Propositions des enfants » chez les parents (3 propositions ou plus : bouton « Tout ignorer »).

@@ -4,6 +4,7 @@
      /shop/items/<id> = "Nom|rayon"        catalogue des articles (parents seulement)
      /shop/need/<id>  = "quantité|qui|0/1"  à acheter ; 1 = dans le panier
      /shop/inbox/<id> = "texte|qui"         « autre chose » proposé par un enfant
+     /shop/note/<id>  = "précision"         texte libre sur une ligne à acheter (ex. « Jérémy »), parents seulement
    Les enfants peuvent AJOUTER un article du catalogue (jamais modifier ni supprimer)
    et proposer du texte libre ; seuls les parents gèrent la liste finale.
    JavaScript ancien (ES5).
@@ -38,11 +39,16 @@
   // ---- Petits outils ----
   var ACCENTS = {"à": "a", "â": "a", "ä": "a", "é": "e", "è": "e", "ê": "e", "ë": "e", "î": "i", "ï": "i",
                  "ô": "o", "ö": "o", "ù": "u", "û": "u", "ü": "u", "ç": "c", "œ": "oe", "æ": "ae", "ÿ": "y"};
-  // minuscules sans accents (pour chercher)
+  // minuscules sans accents, trait d'union et apostrophe = espace (pour chercher et comparer)
   function norm(text){
     var s = String(text).toLowerCase(), out = "", i, c;
     for(i = 0; i < s.length; i++){ c = s.charAt(i); out += ACCENTS[c] || c; }
-    return out;
+    return out.replace(/[-'’]/g, " ");
+  }
+  // première lettre en majuscule (le reste est laissé tel qu'écrit : « Coca-Cola », « Kinder Cards »)
+  function cap(text){
+    var s = String(text);
+    return s.charAt(0).toUpperCase() + s.slice(1);
   }
   // identifiant d'article : lettres et chiffres seulement
   function slug(name){
@@ -79,6 +85,12 @@
     out.sort(byName);
     return out;
   }
+  // précisions (texte libre) des lignes à acheter : id -> texte
+  function notes(){
+    var g = S.getGroup("shop", "note"), out = {}, k;
+    for(k in g){ if(g.hasOwnProperty(k)) out[k] = String(g[k]); }
+    return out;
+  }
   function needs(){
     var g = S.getGroup("shop", "need"), out = {}, k;
     for(k in g){ if(g.hasOwnProperty(k)) out[k] = parseNeed(g[k]); }
@@ -92,7 +104,7 @@
   }
   // Empreinte de tout ce qui s'affiche (pour ne redessiner que si quelque chose a changé)
   function sig(){
-    var g = ["items", "need", "inbox"], out = [], i, k, grp;
+    var g = ["items", "need", "inbox", "note"], out = [], i, k, grp;
     for(i = 0; i < g.length; i++){
       grp = S.getGroup("shop", g[i]);
       var keys = [];
@@ -135,20 +147,39 @@
   }
   // Les lignes de la liste à acheter avec le nom et le rayon de l'article, triées par nom
   function lines(){
-    var n = needs(), its = items(), byId = {}, out = [], i, k, it;
+    var n = needs(), its = items(), nt = notes(), byId = {}, out = [], i, k, it;
     for(i = 0; i < its.length; i++) byId[its[i].id] = its[i];
     for(k in n){
       if(!n.hasOwnProperty(k)) continue;
       it = byId.hasOwnProperty(k) ? byId[k] : null;
-      out.push({id: k, name: it ? it.name : "(article supprimé) " + k, section: section(it ? it.section : "autre").key, q: n[k].q, by: n[k].by, cart: n[k].cart});
+      out.push({id: k, name: it ? it.name : "(article supprimé) " + k, section: section(it ? it.section : "autre").key, q: n[k].q, by: n[k].by, cart: n[k].cart,
+                note: nt.hasOwnProperty(k) ? nt[k] : ""});
     }
     out.sort(byName);
     return out;
   }
-  function removeNeed(id){ S.setShop("need", id, null); }
+  // Précision d'une ligne (« Jérémy » sur une brosse à dents) : texte libre, vide = effacée
+  function setNote(id, text){
+    var t = clean(text, 60);
+    if(t) S.setShop("note", id, t);
+    else if(notes().hasOwnProperty(id)) S.setShop("note", id, null);
+  }
+  // Ajoute une précision à celle qui existe déjà (« Jérémy » puis « Nina » = « Jérémy, Nina »)
+  function addNote(id, text){
+    var t = clean(text, 60);
+    if(!t) return;
+    var cur = notes().hasOwnProperty(id) ? notes()[id] : "";
+    if(cur){
+      if((", " + norm(cur) + ",").indexOf(", " + norm(t) + ",") !== -1) return;   // déjà dedans
+      t = cur + ", " + t;
+    }
+    S.setShop("note", id, t.slice(0, 60));
+  }
+  function dropNote(id){ if(notes().hasOwnProperty(id)) S.setShop("note", id, null); }
+  function removeNeed(id){ S.setShop("need", id, null); dropNote(id); }
   function finishShopping(){
     var n = needs(), k, count = 0;
-    for(k in n){ if(n.hasOwnProperty(k) && n[k].cart){ S.setShop("need", k, null); count++; } }
+    for(k in n){ if(n.hasOwnProperty(k) && n[k].cart){ S.setShop("need", k, null); dropNote(k); count++; } }
     return count;
   }
   function uniqueId(base){
@@ -162,7 +193,7 @@
     return null;
   }
   function createItem(name, sectionKey){
-    var nm = clean(name, 40);
+    var nm = cap(clean(name, 40));
     if(!nm) return null;
     var same = findByName(nm);
     if(same) return same;   // un article du même nom existe déjà : on le réutilise
@@ -171,17 +202,21 @@
     return id;
   }
   function editItem(id, name, sectionKey){
-    var nm = clean(name, 40);
+    var nm = cap(clean(name, 40));
     if(!nm || !exists(id)) return;
     S.setShop("items", id, nm + "|" + section(sectionKey).key);
   }
   function deleteItem(id){
     S.setShop("items", id, null);
     S.setShop("need", id, null);
+    dropNote(id);
   }
   function dropInbox(id){ S.setShop("inbox", id, null); }
   function clearInbox(){ S.clearShop("inbox"); }
-  function clearNeeds(){ S.clearShop("need"); }
+  function clearNeeds(){
+    S.clearShop("need");
+    for(var k in notes()){ S.clearShop("note"); break; }   // les précisions partent avec les lignes
+  }
   function fileInbox(inboxId, itemId, by){
     if(!addOne(itemId, by)) return false;
     dropInbox(inboxId);
@@ -197,7 +232,7 @@
     return true;
   }
   function suggest(text){
-    var r = role(), t = clean(text, 40);
+    var r = role(), t = cap(clean(text, 40));
     if(!r || !t) return false;
     var id = Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
     S.setShop("inbox", id, t + "|" + r);
@@ -227,7 +262,8 @@
     status: status,
     SECTIONS: SECTIONS, WHO: WHO, section: section,
     norm: norm, clean: clean, role: role, isParent: isParent,
-    items: items, needs: needs, inbox: inbox, sig: sig,
+    items: items, needs: needs, inbox: inbox, notes: notes, sig: sig,
+    setNote: setNote, addNote: addNote,
     known: function(){ return S.known("shop"); },
     addOne: addOne, bump: bump, setCart: setCart, lines: lines, removeNeed: removeNeed, finishShopping: finishShopping,
     createItem: createItem, editItem: editItem, deleteItem: deleteItem,

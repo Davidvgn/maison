@@ -78,6 +78,12 @@
           ".validate": "$id.matches(/^[a-z0-9]+$/) && $id.length <= 30 && newData.isString() && newData.val().matches(/^([1-9]|[1-9][0-9])\\|(jeremy|liam|nina|famille)\\|[01]$/)"
         }
       },
+      "note": {
+        ".write": "auth != null && root.child('members').child(auth.uid).val() === 'famille'",
+        "$id": {
+          ".validate": "$id.matches(/^[a-z0-9]+$/) && $id.length <= 30 && newData.isString() && newData.val().length <= 60"
+        }
+      },
       "inbox": {
         ".write": "auth != null && root.child('members').child(auth.uid).val() === 'famille'",
         "$id": {

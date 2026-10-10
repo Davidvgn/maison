@@ -63,7 +63,8 @@
 
   // ---- État de l'écran ----
   var ui = {filing: null, form: {pick: "", name: "", section: "autre"}, editing: null, edit: {name: "", section: "autre"},
-            creating: false, create: {section: "autre"}, confirm: null, mode: "prep", showTaken: false};
+            creating: false, create: {section: "autre"}, confirm: null, mode: "prep", showTaken: false,
+            noteEditing: null, noteText: ""};
   // La vue choisie est gardée sur cet appareil (la tablette en « Préparer », le téléphone en « En magasin »)
   var MODE_K = "maison:courses:mode";
   try{ ui.mode = localStorage.getItem(MODE_K) === "shop" ? "shop" : "prep"; }catch(e){}
@@ -155,10 +156,17 @@
     if(was) flash("« " + name + " » : " + was + " déjà pris, il en reste 1 à prendre.");
     else if(flashText){ flashText = ""; renderStatus(); }   // le message d'un appui précédent ne doit pas rester affiché
   }
-  function more(id, name){
+  function more(id, name, note){
     var was = takenQty(id);
     if(!H.addOne(id)){ flash("Cet article n'existe plus dans le catalogue : retire la ligne avec ✕."); return; }
+    if(note) H.addNote(id, note);
     sayTaken(was, name);
+  }
+  // précision saisie à côté de la recherche : utilisée une fois puis vidée
+  function takeNote(){
+    var f = $("note"), v = f.value;
+    f.value = "";
+    return v;
   }
 
   function sectionSelect(value, onchange){
@@ -265,7 +273,15 @@
   function needRow(r){
     var row = el("div", "row" + (r.cart ? " cart" : ""));
     var nm = el("div", "nm", r.name);
+    // précision (« Jérémy ») : un appui sur le nom l'ouvre ou la modifie
+    nm.appendChild(el("small", r.note ? "note" : "addnote", r.note ? r.note : "＋ précision"));
     if(r.by !== "famille") nm.appendChild(el("small", null, "demandé par " + who(r.by)));
+    nm.onclick = function(){
+      ui.noteEditing = ui.noteEditing === r.id ? null : r.id;
+      ui.noteText = r.note;
+      render();
+      try{ var fld = document.querySelector("#tobuy .inline input"); if(fld) fld.focus(); }catch(e){}
+    };
     row.appendChild(nm);
     if(r.cart) row.appendChild(el("span", "tag done", "✓ pris"));
     var ctl = el("div", "ctl"), q = el("div", "qty");   // quantité et ✕ restent ensemble quand l'écran est étroit
@@ -280,6 +296,19 @@
     x.onclick = function(){ twoTap("rm:" + r.id, function(){ H.removeNeed(r.id); }); };
     ctl.appendChild(x);
     row.appendChild(ctl);
+    if(ui.noteEditing === r.id){
+      var box = el("div", "inline"), inp = textInput(ui.noteText, "Précision (ex. Jérémy)", function(v){ ui.noteText = v; });
+      inp.maxLength = 60;
+      var save = function(){ H.setNote(r.id, ui.noteText); ui.noteEditing = null; render(); };
+      inp.onkeydown = function(e){ if(e && (e.key === "Enter" || e.keyCode === 13)) save(); };
+      box.appendChild(inp);
+      box.appendChild(btn("Enregistrer", "ok", save));
+      if(r.note) box.appendChild(btn("Effacer", "bad", function(){ H.setNote(r.id, ""); ui.noteEditing = null; render(); }));
+      box.appendChild(btn("Annuler", "ghost", function(){ ui.noteEditing = null; render(); }));
+      var wrap = el("div", "rowwrap");
+      wrap.appendChild(row); wrap.appendChild(box);
+      return wrap;
+    }
     return row;
   }
 
@@ -319,6 +348,7 @@
   function takeRow(r, done){
     var row = el("div", "row take" + (done ? " cart" : ""));
     var nm = el("div", "nm", r.name);
+    if(r.note) nm.appendChild(el("small", "note", r.note));
     if(r.by !== "famille") nm.appendChild(el("small", null, "demandé par " + who(r.by)));
     row.appendChild(nm);
     if(r.q > 1) row.appendChild(el("span", "big", "×" + r.q));
@@ -369,7 +399,7 @@
       nm.appendChild(el("small", null, H.section(it.section).emoji + " " + H.section(it.section).name));
       row.appendChild(nm);
       if(n.hasOwnProperty(it.id)) row.appendChild(el("span", "tag", "×" + n[it.id].q));
-      row.appendChild(btn("＋", "sm ok", function(){ more(it.id, it.name); render(); }));
+      row.appendChild(btn("＋", "sm ok", function(){ more(it.id, it.name, takeNote()); render(); }));
       box.appendChild(row);
     });
     if(!found.length) box.appendChild(el("div", "empty", "Aucun article de ce nom."));
@@ -384,6 +414,7 @@
           var id = H.createItem(text, ui.create.section);
           if(!id) return;
           H.addOne(id);
+          H.addNote(id, takeNote());
           ui.creating = false; $("search").value = ""; render();
         }));
         f.appendChild(btn("Annuler", "ghost", function(){ ui.creating = false; render(); }));

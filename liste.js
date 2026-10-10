@@ -72,6 +72,8 @@
     row.appendChild(nm);
     if(need){
       // déjà demandé : on ne touche à rien. Si c'est déjà pris au magasin, on le dit (une nouvelle demande passe par « autre chose »)
+      var pr = H.notes()[it.id];
+      if(pr) nm.appendChild(el("small", "note", pr));
       nm.appendChild(el("small", null, need.cart
         ? "déjà pris au magasin · s'il en faut encore, écris-le plus bas (« Il manque autre chose ? »)"
         : "déjà demandé par " + who(need.by)));
