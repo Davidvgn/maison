@@ -12,6 +12,8 @@
              (période = "AAAA-MM-JJ" ou "WE-AAAA-Wnn" pour le week-end)
    Maison  : /house/<machine>/<champ> = "AAAA-MM-JJ HH:MM" (lave-vaisselle, sèche-linge,
              étendage) : état partagé, lisible par tous les comptes (voir house.js)
+   Courses : /shop/items/<id> = "Nom|rayon", /shop/need/<id> = "quantité|qui|panier",
+             /shop/inbox/<id> = "texte|qui" : liste de courses partagée (voir shop.js)
    Droits  : /members/<uid> = "jeremy" | "liam" | "nina" | "famille"
              (écrit à la main dans la console Firebase, jamais par l'appli)
    ================================================================ */
@@ -95,7 +97,7 @@
   var CONFIG = /API key|API_KEY|referer|PERMISSION_DENIED|PROJECT_NUMBER_MISMATCH|CONFIGURATION_NOT_FOUND|are blocked|has not been used|SERVICE_DISABLED/i;
 
   function forget(){
-    auth = null; inflight = null; tree = {}; knownHouse = false;
+    auth = null; inflight = null; tree = {}; knownRoots = {};
     save(AUTH_K, null); writeQ([]); pruneCache([]);
     stopStreams(); notify();
   }
@@ -185,7 +187,7 @@
           var same = auth && auth.uid === a.uid;
           if(!save(AUTH_K, a)){ cb("Cet appareil n'enregistre rien (navigation privée ?) : ouvre la page en navigation normale."); return; }
           auth = a; denied = false; netDown = false; configErr = false;
-          if(!same){ writeQ([]); tree = {}; knownHouse = false; pruneCache([]); }
+          if(!same){ writeQ([]); tree = {}; knownRoots = {}; pruneCache([]); }
           save(EMAIL_K, a.email);
           restart();
           cb(null, role);
@@ -218,7 +220,11 @@
 
   // ---- Coches reçues de la base : tree[période][enfant][tâche] = valeur ----
   var tree = {}, periods = [], watchedKids = [], streams = [], listeners = [];
-  var knownHouse = false;        // l'état de la maison a été reçu au moins une fois (ou lu dans le cache)
+  // Racines annexes, hors coches du jour : une racine par espace partagé (maison, courses)
+  var AUX = {house: 1, shop: 1};
+  function isAux(r){ return AUX.hasOwnProperty(r); }
+  var knownRoots = {};           // racine annexe déjà reçue au moins une fois (ou lue dans le cache)
+  var extraRoots = [];           // racines annexes demandées par la page (ex. ["shop"])
   var remoteSeq = {}, seq = 0;   // chemin -> n° du dernier changement reçu de la base
   var localAt = {};              // chemin -> dernière écriture confirmée par la base {t, v}
 
@@ -270,10 +276,37 @@
     if(!signedIn()) return;
     enqueue("house/" + machine + "/" + field, v);
   }
+  // Courses : /shop/<groupe>/<id> (la base décide qui a le droit d'écrire quoi)
+  function setShop(group, id, v){
+    if(!signedIn()) return;
+    enqueue("shop/" + group + "/" + id, v);
+  }
+  // Vider un groupe entier d'un coup (réservé aux parents par les droits)
+  function clearShop(group){
+    if(!signedIn()) return;
+    enqueue("shop/" + group, null);
+  }
+  // Tous les éléments d'un groupe (ce que la base a envoyé, avec par-dessus ce que cet appareil vient d'écrire)
+  function getGroup(root, group){
+    var out = {}, base = tree[root] && tree[root][group], k, i, pre = root + "/" + group + "/", p, id;
+    if(base){ for(k in base){ if(has(base, k)) out[k] = base[k]; } }
+    for(i = 0; i < pending.length; i++){
+      p = pending[i].p;
+      if(p === root + "/" + group){ if(pending[i].v == null) out = {}; continue; }   // groupe vidé d'un coup
+      if(p.indexOf(pre) !== 0) continue;
+      id = p.slice(pre.length);
+      if(id.indexOf("/") !== -1) continue;
+      if(pending[i].v == null) delete out[id]; else out[id] = pending[i].v;
+    }
+    return out;
+  }
 
   function treeSet(segs, v){
     var p = segs[0], kid = segs[1], task = segs[2];
-    if(!tree[p]) loadCache(p);   // période pas suivie par cette page (sport, guide) : on part du cache enregistré
+    if(!tree[p]){
+      if(isAux(p) && load(CACHE_K + p) === null) return;   // racine annexe jamais reçue ici : pas de cache construit à partir d'une seule écriture
+      loadCache(p);   // période pas suivie par cette page (sport, guide) : on part du cache enregistré
+    }
     if(!tree[p][kid]) tree[p][kid] = {};
     if(v == null){ delete tree[p][kid][task]; if(isEmpty(tree[p][kid])) delete tree[p][kid]; }
     else tree[p][kid][task] = v;
@@ -287,9 +320,11 @@
     retryDelay = Math.min(retryDelay * 2, 60000);
   }
   // Un lancement (ou « étendu ») resté plus de 10 minutes dans la file n'est plus d'actualité : on ne le rejoue pas,
-  // il rouvrirait une étape déjà faite par quelqu'un d'autre.
+  // il rouvrirait une étape déjà faite par quelqu'un d'autre. Idem pour « vider toute la liste » : rejoué trop tard,
+  // il effacerait ce que les autres ont ajouté entre-temps.
   function staleTrigger(op){
-    return !!(op && op.t && /^house\/[a-z]+\/(launched|hung)$/.test(op.p) && Date.now() - op.t > 600000);
+    if(!op || !op.t || Date.now() - op.t <= 600000) return false;
+    return /^house\/[a-z]+\/(launched|hung)$/.test(op.p) || (op.v == null && /^shop\/(need|inbox)$/.test(op.p));
   }
   function flush(){
     if(inflight || !auth) return;
@@ -299,7 +334,7 @@
     if(kept.length !== pending.length){ writeQ(kept); notify(); }
     if(!pending.length) return;
     var h = pending[0];
-    inflight = {p: h.p, v: h.v, id: h.id, retried: false, seq: remoteSeq[h.p] || 0};
+    inflight = {p: h.p, v: h.v, id: h.id, retried: false, seq: remoteSeq[h.p] || 0, gseq: seq};
     send(inflight);
   }
   // Coche envoyée (ou refusée) : on retire CETTE entrée de la file (si elle n'a pas été remplacée entre-temps)
@@ -309,7 +344,19 @@
     writeQ(q);
     if(!applied) return;
     // On l'affiche tout de suite, sauf si la base a déjà renvoyé plus récent pour cette tâche pendant l'envoi
-    if((remoteSeq[op.p] || 0) === op.seq) treeSet(op.p.split("/"), op.v);
+    var segs = op.p.split("/");
+    if(segs.length === 2){   // groupe entier (ex. shop/inbox), forcément une suppression
+      if(op.v == null){
+        if(!tree[segs[0]] && isAux(segs[0]) && load(CACHE_K + segs[0]) !== null) loadCache(segs[0]);
+        var grp = tree[segs[0]] && tree[segs[0]][segs[1]], gk;
+        if(grp){
+          // ce que la base a renvoyé depuis l'envoi (ex. la demande d'un enfant postérieure) reste affiché
+          for(gk in grp){ if(has(grp, gk) && (remoteSeq[op.p + "/" + gk] || 0) <= (op.gseq || 0)) delete grp[gk]; }
+          if(isEmpty(grp)) delete tree[segs[0]][segs[1]];
+          saveCache(segs[0]);
+        }
+      }
+    } else if((remoteSeq[op.p] || 0) === op.seq) treeSet(segs, op.v);
     localAt[op.p] = {t: Date.now(), v: op.v};
   }
   function send(op){
@@ -317,7 +364,7 @@
       if(inflight !== op) return;
       if(err){ inflight = null; if(err !== "out") scheduleRetry(); notify(); return; }
       var del = op.v == null;
-      var root = op.p.indexOf("house/") === 0 ? "/" : "/done/";
+      var root = /^(house|shop)\//.test(op.p) ? "/" : "/done/";
       var url = DB + root + op.p + ".json?" + (del ? "" : "print=silent&") + "auth=" + encodeURIComponent(tok);
       req(del ? "DELETE" : "PUT", url, del ? null : JSON.stringify(op.v), "application/json", 15000, function(st){
         if(inflight !== op) return;
@@ -373,9 +420,21 @@
   }
   // Instantané (interrogation) demandé avant une écriture confirmée ensuite : on garde l'écriture
   function keepLocalSince(t0, base){
-    var pre = base.join("/") + "/";
-    for(var path in localAt){
-      if(has(localAt, path) && localAt[path].t > t0 && path.indexOf(pre) === 0) treeSet(path.split("/"), localAt[path].v);
+    var pre = base.join("/") + "/", path, segs, cl;
+    for(path in localAt){   // d'abord les groupes vidés d'un coup (ex. shop/need)
+      if(has(localAt, path) && localAt[path].t > t0 && path.indexOf(pre) === 0 && localAt[path].v == null){
+        segs = path.split("/");
+        if(segs.length === 2 && tree[segs[0]] && tree[segs[0]][segs[1]]){ delete tree[segs[0]][segs[1]]; saveCache(segs[0]); }
+      }
+    }
+    for(path in localAt){
+      if(has(localAt, path) && localAt[path].t > t0 && path.indexOf(pre) === 0){
+        segs = path.split("/");
+        if(segs.length === 2) continue;
+        cl = segs.length === 3 ? localAt[segs[0] + "/" + segs[1]] : null;
+        if(cl && cl.v == null && cl.t >= localAt[path].t) continue;   // écriture plus ancienne que le groupe vidé
+        treeSet(segs, localAt[path].v);
+      }
     }
   }
 
@@ -383,14 +442,21 @@
   function pollRemembered(){ var t = load(POLL_K); return !!(t && Date.now() - t < 86400000); }
   function rememberPoll(on){ save(POLL_K, on ? Date.now() : null); }
 
-  // La maison n'a jamais répondu dans cette session et échoue : on retombe sur les tâches habituelles
-  function houseFailed(s){
-    if(!s.gotData && (s.denials >= 1 || s.fails >= 6) && knownHouse){ knownHouse = false; notify(); }
+  // Un espace annexe (maison, courses) n'a jamais répondu dans cette session et échoue : on retombe sur l'affichage habituel
+  function auxFailed(s){
+    var r = s.base[0];
+    if(!s.gotData && (s.denials >= 1 || s.fails >= 6) && knownRoots[r]){ knownRoots[r] = false; notify(); }
+  }
+  // Échec « léger » : un espace annexe refusé alors que les coches (flux de période) fonctionnent
+  function light(s){
+    if(!isAux(s.base[0])) return false;
+    for(var i = 0; i < streams.length; i++){ if(!isAux(streams[i].base[0])) return true; }
+    return false;
   }
 
   function Stream(base){
     this.base = base;                       // ["2026-10-10"] ou ["2026-10-10","liam"]
-    this.path = base[0] === "house" ? "/house" : "/done/" + base.join("/");
+    this.path = isAux(base[0]) ? "/" + base[0] : "/done/" + base.join("/");
     this.es = null; this.timer = null; this.renew = null;
     this.gen = 0; this.fails = 0; this.denials = 0; this.gotData = false; this.lastSeen = 0;
     this.usePoll = !window.EventSource || pollRemembered();
@@ -419,7 +485,7 @@
           if(!m) return;
           if(!s.gotData){ s.gotData = true; rememberPoll(false); }
           s.fails = 0; netDown = false;
-          if(s.base[0] === "house") knownHouse = true;
+          if(isAux(s.base[0])) knownRoots[s.base[0]] = true;
           applyAt(s.base, m.path, m.data, merge);
           notify();
         };
@@ -429,8 +495,9 @@
       es.addEventListener("keep-alive", function(){ if(mine()) s.lastSeen = Date.now(); });
       es.addEventListener("cancel", function(){   // la base ne permet plus de lire : droits retirés ?
         if(!mine()) return;
-        if(s.base[0] === "house"){   // seule la maison est refusée : on réessaie plus tard, sans bannière « accès refusé »
-          s.clear(); s.fails++; houseFailed(s); s.later(); notify();
+        if(isAux(s.base[0])){   // seul cet espace annexe est refusé : on réessaie plus tard, sans bannière « accès refusé »
+          s.clear(); s.fails++; auxFailed(s); s.later(); notify();
+          if(!light(s)) setTimeout(checkRole, 3000);   // page sans coches : on vérifie quand même les droits du compte
           return;
         }
         s.clear(); s.cancelled = true; denied = true; notify();
@@ -441,14 +508,15 @@
         if(!mine()) return;
         if(es.readyState === 2){            // refusé ou fermé pour de bon : on relance nous-mêmes
           s.clear(); s.fails++;
-          if(s.base[0] === "house"){        // la maison seule en erreur : ce n'est pas un problème de jeton ni de droits du compte
-            houseFailed(s);
+          if(light(s)){        // l'espace annexe seul en erreur : ce n'est pas un problème de jeton ni de droits du compte
+            auxFailed(s);
             if(!s.gotData && s.fails >= 3){ s.usePoll = true; s.start(); return; }
             s.later();
             notify();
             return;
           }
-          dropToken();
+          if(isAux(s.base[0])) auxFailed(s);   // page sans flux de période (courses) : l'espace annexe est seul
+          if(!isAux(s.base[0]) || s.fails <= 2) dropToken();
           if(!s.gotData && s.fails >= 3){ s.usePoll = true; s.esFailed = true; s.start(); return; }
           if(s.fails >= 2) checkRole();
           s.later();
@@ -466,26 +534,27 @@
       if(s.stopped || g !== s.gen) return;
       if(st === 200){
         s.fails = 0; s.gotData = true; s.lastSeen = Date.now(); netDown = false;
-        if(s.esFailed && s.base[0] !== "house"){ rememberPoll(true); s.esFailed = false; }   // le réseau marche mais pas EventSource : on s'en souvient
+        if(s.esFailed && !light(s)){ rememberPoll(true); s.esFailed = false; }   // le réseau marche mais pas EventSource : on s'en souvient
         s.denials = 0;
         // la maison : le flux en direct a pu échouer parce que les droits n'étaient pas encore publiés, pas parce qu'EventSource est cassé : on le retente
-        if(s.base[0] === "house" && window.EventSource && !pollRemembered()) s.usePoll = false;
-        if(s.base[0] === "house") knownHouse = true;
+        if(isAux(s.base[0]) && window.EventSource && !pollRemembered()) s.usePoll = false;
+        if(isAux(s.base[0])) knownRoots[s.base[0]] = true;
         applyAt(s.base, "/", j, false); keepLocalSince(t0, s.base); notify();
       }
       else if(st === 401 || st === 403){
         s.esFailed = false;   // un refus de la base prouve que le souci n'est pas EventSource
         s.fails++;
-        if(s.base[0] === "house"){ s.denials++; houseFailed(s); notify(); }
-        else { dropToken(); if(s.fails >= 2) checkRole(); }
+        if(isAux(s.base[0])){ s.denials++; auxFailed(s); }
+        if(light(s)) notify();
+        else { if(!isAux(s.base[0]) || s.fails <= 2) dropToken(); if(s.fails >= 2) checkRole(); }
       }
-      else { s.fails++; if(s.base[0] !== "house") netDown = true; notify(); }
+      else { s.fails++; if(!light(s)) netDown = true; notify(); }
       s.timer = setTimeout(function(){ s.timer = null; s.start(); }, st === 200 ? 20000 : s.delay());
     });
   };
   Stream.prototype.delay = function(){
     // la maison refusée par la base (droits pas encore publiés) : on ne harcèle pas ; une simple panne réseau garde le rythme normal
-    if(this.base[0] === "house" && this.denials >= 2 && !this.gotData) return 300000;
+    if(isAux(this.base[0]) && this.denials >= 2 && !this.gotData) return 300000;
     return Math.min(5000 * Math.pow(2, this.fails), 60000);
   };
   Stream.prototype.later = function(){
@@ -531,22 +600,29 @@
       else if(indexOf(watchedKids, auth.role) !== -1) streams.push(new Stream([periods[i], auth.role]));
     }
     if(streams.length) streams.push(new Stream(["house"]));   // la maison suit les pages qui affichent une liste
+    for(var x = 0; x < extraRoots.length; x++) streams.push(new Stream([extraRoots[x]]));
     for(var j = 0; j < streams.length; j++) streams[j].start();
     flush();
     notify();
   }
 
   // Une page déclare ce qu'elle affiche : périodes (jour, week-end) et enfants concernés.
-  function watch(ps, kids, onChange){
+  function watch(ps, kids, onChange, extra){
     if(onChange) listeners.push(onChange);
     if(!ENABLED) return;
     periods = ps.slice();
     watchedKids = kids.slice();
-    pruneCache(periods.concat(["house"]));
+    extraRoots = (extra || []).slice();
+    var roots = ["house"].concat(extraRoots), r, a;
+    var keepAux = [];
+    for(a in AUX){ if(AUX.hasOwnProperty(a)) keepAux.push(a); }
+    if(periods.length) pruneCache(periods.concat(keepAux));   // page sans période (courses) : on ne touche pas aux caches des jours
     tree = {};
     for(var i = 0; i < periods.length; i++) loadCache(periods[i]);
-    knownHouse = load(CACHE_K + "house") !== null;
-    loadCache("house");
+    for(r = 0; r < roots.length; r++){
+      knownRoots[roots[r]] = load(CACHE_K + roots[r]) !== null;
+      loadCache(roots[r]);
+    }
     restart();
     checkRole();
   }
@@ -596,8 +672,13 @@
     if(configErr) return {k: "config", n: n};
     if(netDown || navigator.onLine === false) return {k: "offline", n: n};
     if(streams.length){
-      var any = false;
-      for(var i = 0; i < streams.length; i++){ if(streams[i].base[0] !== "house" && streams[i].live()) any = true; }
+      // On juge la connexion sur les flux principaux ; sur une page qui n'en a pas (courses), sur le flux annexe
+      var main = 0, mainLive = 0, auxLive = 0;
+      for(var i = 0; i < streams.length; i++){
+        if(isAux(streams[i].base[0])){ if(streams[i].live()) auxLive++; }
+        else { main++; if(streams[i].live()) mainLive++; }
+      }
+      var any = main ? mainLive > 0 : auxLive > 0;
       if(!any){
         if(!connSince) connSince = Date.now();
         return {k: Date.now() - connSince > 60000 ? "offline" : "connecting", n: n};
@@ -617,14 +698,18 @@
     get: get,
     set: set,
     setHouse: setHouse,
-    houseKnown: function(){ return knownHouse; },
+    setShop: setShop,
+    clearShop: clearShop,
+    getGroup: getGroup,
+    houseKnown: function(){ return !!knownRoots.house; },
+    known: function(root){ return !!knownRoots[root]; },
     watch: watch,
     state: state,
     // Toutes les périodes suivies ont reçu au moins une fois l'état de la base
     ready: function(){
       var n = 0;
       for(var i = 0; i < streams.length; i++){
-        if(streams[i].base[0] === "house") continue;
+        if(isAux(streams[i].base[0])) continue;
         n++;
         if(!streams[i].gotData) return false;
       }

@@ -79,7 +79,7 @@ members
 
 ### 6. Coller les règles
 **Realtime Database > Règles** > remplace tout par le contenu de [`database.rules.json`](database.rules.json) > **Publier**.
-À refaire chaque fois que ce fichier change (ex. quand la maison a été ajoutée), **avant** de mettre le site en ligne : le site ne casse pas si les règles sont en avance, il se contente de garder les tâches habituelles tant que la base ne répond pas.
+À refaire chaque fois que ce fichier change (quand la maison ou les courses ont été ajoutées, par exemple), **avant** de mettre le site en ligne : le site ne casse pas si les règles sont en avance, il se contente de garder les tâches habituelles tant que la base ne répond pas. Si c'est l'inverse (site en ligne, règles pas publiées), la page des courses affiche « Impossible de charger la liste » : publie les règles.
 
 Vérifie-les avec le **Rules Playground** (bouton dans l'éditeur de règles, « Authentifié » + UID) :
 
@@ -101,6 +101,17 @@ Vérifie-les avec le **Rules Playground** (bouton dans l'éditeur de règles, «
 | écriture | `/house/rack/nina` | UID de Liam | (même valeur que `hung`) | ❌ refusé |
 | lecture | `/house` | UID de Liam | | ✅ autorisé |
 | lecture | `/house` | non authentifié | | ❌ refusé |
+| écriture | `/shop/items/beurre` | UID de Liam | `"Beurre|frais"` | ❌ refusé |
+| écriture | `/shop/need/beurre` (article présent dans `items`) | UID de Liam | `"2|liam|0"` | ✅ autorisé |
+| écriture | `/shop/need/beurre` (déjà demandé) | UID de Liam | `"9|liam|0"` | ❌ refusé |
+| suppression | `/shop/need/beurre` | UID de Liam | | ❌ refusé |
+| écriture | `/shop/need/beurre` | UID de Liam | `"2|nina|0"` (au nom d'un autre) | ❌ refusé |
+| écriture | `/shop/need/beurre` | UID de Liam | `"25|liam|0"` (plus de 20) | ❌ refusé |
+| écriture | `/shop/inbox/abc1` | UID de Liam | `"Chips|liam"` | ✅ autorisé |
+| suppression | `/shop/inbox` (tout le groupe) | UID de Liam | | ❌ refusé |
+| suppression | `/shop/inbox` | UID famille | | ✅ autorisé |
+| lecture | `/shop` | UID de Liam | | ✅ autorisé |
+| lecture | `/shop` | non authentifié | | ❌ refusé |
 
 ### 7. Récupérer la clé API web
 **⚙️ Paramètres du projet > Général > Vos applications > icône Web `</>`** > surnom `maison` (ne coche pas Firebase Hosting) > **Enregistrer**.
@@ -152,6 +163,28 @@ Sur la page de la tablette (et sur ton téléphone, connecté en compte `famille
 - Les tâches de la maison ne comptent pas dans la barre de progression des enfants.
 - Un enfant qui utilise la tablette (connectée en `famille`) peut aussi appuyer sur les boutons, y compris « Annuler » : c'est à surveiller.
 
+## Les courses
+
+Une liste partagée, par rayon, pour les parents ; les enfants peuvent y **ajouter** sans toucher à la liste finale.
+
+| Qui | Où | Ce que ça permet |
+|---|---|---|
+| Parents (compte `famille`) | `courses.html` (tuile « 🛒 Courses » sur la page tablette) | liste à acheter par rayon ; cocher dans le panier ; quantités ; « Terminer les courses » (retire ce qui est dans le panier) ; classer les propositions des enfants ; créer, renommer, ranger, supprimer des articles |
+| Enfants | `liste.html` (lien « 🛒 Ajouter à la liste de courses » sur leur page) | chercher un article du catalogue et l'ajouter avec une quantité ; voir ce qui est déjà demandé (et par qui) sans pouvoir le changer ; proposer « autre chose » en texte libre |
+
+- Le catalogue se remplit au fur et à mesure : quand tu cherches un article qui n'existe pas, « ➕ Créer » te demande son rayon.
+- Les rayons sont communs aux quatre magasins (Leclerc, Intermarché, Super U, Carrefour) ; l'ordre est fixe, défini dans `shop.js` (`SECTIONS`).
+- Un enfant ne peut créer que la demande d'un article **déjà dans le catalogue**, à son nom, hors panier, de 1 à 20 ; pas de modification ni de suppression. Les propositions libres arrivent dans « Propositions des enfants » chez les parents (3 propositions ou plus : bouton « Tout ignorer »).
+- Les parents vont jusqu'à 99 par article. Le « + » d'un parent sur une ligne demandée par un enfant augmente la quantité et la sort du panier ; la ligne garde « demandé par … ».
+- Deux parents qui touchent la même ligne au même moment, ou un parent qui coche hors réseau au magasin pendant que l'autre change une quantité : la dernière action gagne (pas de fusion des quantités). Sans importance en pratique, mais ne compte pas sur un décompte exact dans ce cas.
+- Tout compte connecté peut lire la liste et les propositions (la page des enfants n'affiche que les siennes) : ce ne sont que des noms de produits.
+- Un enfant « mal intentionné » peut inonder la boîte de propositions (la base ne limite pas leur nombre). La page des parents n'en affiche que 50 à la fois et « Tout ignorer » (en haut) les vide d'un geste ; il ne peut rien casser d'autre (limites ci-dessus). Si ça arrive, c'est une conversation à avoir, pas un souci technique.
+- « Vider toute la liste à acheter » et « Tout ignorer » mis en file sans réseau ne sont pas rejoués s'ils attendent plus de 10 minutes (ils effaceraient ce que les autres ont ajouté entre-temps) : la liste réapparaît, il suffit de refaire le geste.
+- Les noms d'articles sont limités à 40 caractères ; le caractère `|` y est remplacé par une espace.
+- Sans réseau, la page déjà ouverte garde sa liste et les actions partent au retour du réseau. Une page qu'on recharge sans réseau peut ne pas se rouvrir.
+- Pas de photos : le stockage de fichiers de Firebase est payant depuis février 2026.
+- Le compte de ta femme : même procédure que les autres (étape 4), avec le rôle `famille` dans `members` (étape 5).
+
 ## Au quotidien
 
 - Rien à faire. Un bandeau n'apparaît que s'il y a un souci : appareil pas connecté, pas de réseau (avec le nombre de coches en attente), accès refusé.
@@ -170,7 +203,7 @@ Avec un compte `famille` partagé, l'étape 1 coupe aussi la tablette (et ton t�
 ## Gratuit, et ça le reste
 
 - Le projet reste sur le plan **Spark** (gratuit) tant qu'aucun compte de facturation n'y est rattaché. Sans moyen de paiement, Google ne peut rien facturer : si une limite est dépassée, le service s'arrête jusqu'au mois suivant, c'est tout.
-- Limites Spark : 1 Go stocké, 10 Go téléchargés par mois, 100 connexions ouvertes en même temps. La maison en utilise une infime partie : quelques dizaines de Ko par jour, et deux à trois connexions ouvertes par appareil allumé (le jour, le week-end si besoin, et la maison).
+- Limites Spark : 1 Go stocké, 10 Go téléchargés par mois, 100 connexions ouvertes en même temps. La maison en utilise une infime partie : quelques dizaines de Ko par jour, et deux à trois connexions ouvertes par appareil allumé (le jour, le week-end si besoin, et la maison), plus une pour la liste de courses tant que sa page est ouverte.
 - À ne pas activer : Cloud Storage, Cloud Functions, App Hosting, passage au plan Blaze. Rien de tout ça n'est utile ici.
 - Seul risque théorique : quelqu'un qui bombarderait l'adresse de la base pourrait épuiser le quota du mois (même les requêtes refusées comptent). Conséquence : synchro coupée jusqu'au mois suivant, les coches restent sur les appareils. Jamais de facture.
 

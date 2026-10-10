@@ -7,3 +7,4 @@ Les pages de la maison : la journée de chaque enfant (Jérémy, Liam, Nina), la
 - Réglages des enfants (tâches, jours, sport) : `children.js`. Liste des tâches et calendrier : `chores-core.js`.
 - Code en JavaScript ancien (ES5) pour tourner sur n'importe quel navigateur, même vieux (tablette de la cuisine : Android).
 - L'état de la maison (lave-vaisselle, sèche-linge, étendage) est dans `house.js`.
+- La liste de courses : `shop.js` (données), `courses.html` (parents), `liste.html` (enfants).

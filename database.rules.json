@@ -62,6 +62,29 @@
           ".validate": "newData.isString() && newData.val() === root.child('house/rack/hung').val()"
         }
       }
+    },
+    "shop": {
+      ".read": "auth != null && root.child('members').child(auth.uid).val().matches(/^(jeremy|liam|nina|famille)$/)",
+      "items": {
+        "$id": {
+          ".write": "auth != null && root.child('members').child(auth.uid).val() === 'famille'",
+          ".validate": "$id.matches(/^[a-z0-9]+$/) && $id.length <= 30 && newData.isString() && newData.val().length <= 60 && newData.val().matches(/^[^|]+\\|(fruits|boulangerie|viande|frais|epicerie|sucre|boissons|surgeles|hygiene|entretien|autre)$/)"
+        }
+      },
+      "need": {
+        ".write": "auth != null && root.child('members').child(auth.uid).val() === 'famille'",
+        "$id": {
+          ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'famille' || (root.child('members').child(auth.uid).val().matches(/^(jeremy|liam|nina|famille)$/) && !data.exists() && newData.exists() && root.child('shop/items').child($id).exists() && newData.val().endsWith('|' + root.child('members').child(auth.uid).val() + '|0') && newData.val().matches(/^([1-9]|1[0-9]|20)\\|/)))",
+          ".validate": "$id.matches(/^[a-z0-9]+$/) && $id.length <= 30 && newData.isString() && newData.val().matches(/^([1-9]|[1-9][0-9])\\|(jeremy|liam|nina|famille)\\|[01]$/)"
+        }
+      },
+      "inbox": {
+        ".write": "auth != null && root.child('members').child(auth.uid).val() === 'famille'",
+        "$id": {
+          ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'famille' || (root.child('members').child(auth.uid).val().matches(/^(jeremy|liam|nina|famille)$/) && !data.exists() && newData.exists() && newData.val().endsWith('|' + root.child('members').child(auth.uid).val())))",
+          ".validate": "$id.matches(/^[a-z0-9]+$/) && $id.length <= 30 && newData.isString() && newData.val().length <= 60 && newData.val().matches(/^[^|]+\\|(jeremy|liam|nina|famille)$/)"
+        }
+      }
     }
   }
 }

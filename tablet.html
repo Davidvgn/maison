@@ -260,16 +260,18 @@
     function renderHouse(){
       var box=document.getElementById("house");
       var H=window.House;
-      var on=!current && H && H.isParent() && H.known() && !C.qs("date");
-      var key=on?("1|"+H.sig()):"0";
+      var on=!current && H && H.isParent() && !C.qs("date");
+      var key=on?("1|"+(H.known()?H.sig():"?")):"0";
       if(key===houseKey) return;   // rien n'a changé : on ne touche pas aux boutons (pas de toucher perdu)
       houseKey=key;
       box.innerHTML="";
       box.className=on?"show":"";
       if(!on) return;
-      var head=el("div","hh"); head.textContent="🏡 La maison · appuie sur le bouton vert quand tu lances une machine"; box.appendChild(head);
       var wrap=el("div","tiles");
-      H.tiles().forEach(function(t){
+      if(H.known()){
+        var head=el("div","hh"); head.textContent="🏡 La maison · appuie sur le bouton vert quand tu lances une machine"; box.appendChild(head);
+      }
+      (H.known()?H.tiles():[]).forEach(function(t){
         var tile=el("div","tile"+(t.busy?" busy":""));
         var name=el("div","tn"); name.textContent=t.emoji+" "+t.name; tile.appendChild(name);
         var st=el("div","ts"); st.textContent=t.text; tile.appendChild(st);
@@ -292,6 +294,13 @@
         tile.appendChild(row);
         wrap.appendChild(tile);
       });
+      var shop=el("div","tile");
+      var sn=el("div","tn"); sn.textContent="🛒 Courses"; shop.appendChild(sn);
+      var ss=el("div","ts"); ss.textContent="La liste à acheter, par rayon"; shop.appendChild(ss);
+      var sr=el("div","tb"), so=el("button","go"); so.type="button"; so.textContent="Ouvrir";
+      so.onclick=function(){ location.href="courses.html?back=tablet.html"; };
+      sr.appendChild(so); shop.appendChild(sr);
+      wrap.appendChild(shop);
       box.appendChild(wrap);
     }
 
