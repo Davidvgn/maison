@@ -79,6 +79,26 @@
   #cols.one{justify-content:center;}
   #cols.one .col{max-width:720px;}
   #back{display:none;font-size:1.05rem;font-weight:800;color:#fff;background:#33415c;border-radius:12px;padding:9px 14px;margin-right:16px;cursor:pointer;}
+  #sync{display:none;margin-left:14px;font-size:.95rem;font-weight:800;color:#fff;background:#e08a1e;border-radius:12px;padding:8px 12px;cursor:pointer;}
+  #sync.out,#sync.denied,#sync.other,#sync.config,#sync.reload{background:#d6392d;}
+  .task .when{flex:none;font-size:.8rem;font-weight:800;color:#1f8a55;margin-right:8px;}
+
+  /* Téléphone (vue parent) : cartes et météo empilées */
+  @media (max-width:700px){
+    #top{flex-wrap:wrap;padding:8px 12px;}
+    #clock{font-size:2rem;margin-right:12px;}
+    #banner{margin-left:0;margin-top:6px;width:100%;}
+    #sync{margin-left:auto;}
+    #banner:empty{display:none;}
+    #cols{padding:0 4px 6px;}
+    #cols.home{flex-direction:column;justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 12px 14px;}
+    .card{flex:none;max-width:none;margin:6px 0;flex-direction:row;justify-content:flex-start;text-align:left;padding:12px 14px;}
+    .card .face{font-size:2.6rem;margin-right:12px;}
+    .card .nm{font-size:1.5rem;margin:0 12px 0 0;}
+    .card .mini{width:auto;flex:1;}
+    #cols.one .col{max-width:none;}
+    #wx{display:none !important;}   /* vue parent sur téléphone : toute la place pour les enfants */
+  }
 </style>
 </head>
 <body>
@@ -86,6 +106,7 @@
   <div id="back">← Accueil</div>
   <div id="clock">--:--</div>
   <div id="date"></div>
+  <div id="sync"></div>
   <div id="banner"></div>
 </div>
 <div id="wx"></div>
@@ -93,10 +114,10 @@
 
 <script>
 (function(){
-  var q=["children.js","chores-core.js"], t=Date.now();
+  var q=["children.js","firebase-config.js","sync.js","chores-core.js"], t=Date.now();
   function next(){
     if(!q.length){ start(); return; }
-    var s=document.createElement("script"); s.src=q.shift()+(location.protocol==="file:"?"":"?t="+t); s.onload=next; document.body.appendChild(s);
+    var s=document.createElement("script"); s.src=q.shift()+(location.protocol==="file:"?"":"?t="+t); s.onload=next; s.onerror=function(){ window.LOAD_FAILED=true; next(); }; document.body.appendChild(s);
   }
   next();
 
@@ -110,7 +131,7 @@
     var backEl=document.getElementById("back");
     var m=/[?&]kid=([a-z]+)/.exec(location.search);
     var current=(m && window.CHILDREN[m[1]])?m[1]:null;   // null = accueil
-    var lastTouch=Date.now();
+    var lastTouch=Date.now(), lastKey="";
 
     function el(tag, cls, html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
     function go(k){ current=k; lastTouch=Date.now(); render(); }
@@ -120,7 +141,7 @@
 
     function info(k, now, tomorrow, h){
       var cfg=window.CHILDREN[k];
-      var tasks=C.buildTasks(cfg, now, tomorrow);
+      var tasks=C.visibleTasks(k, cfg, now, tomorrow);
       function done(t){ return C.isDone(k,t,now); }
       var gateLeft=tasks.filter(function(t){return t.gate && !done(t);}).length;
       return {cfg:cfg, tasks:tasks, done:done, st:status(h,gateLeft), ds:C.dayState(now,cfg)};
@@ -156,8 +177,9 @@
       function addTask(t){
         var d=done(t);
         var urgent=(t.block==="avant19" && !d && h>=18);
+        var v=d?String(C.doneValue(k,t,now)||""):"", hhmm=/ (\d\d:\d\d)$/.exec(v);   // heure de la coche, pour le parent
         var row=el("div","task"+(d?" done":"")+(urgent?" urgent":"")+(t.optional?" optional":""),
-          "<div class='emoji'>"+t.emoji+"</div><div class='label'>"+t.label+(t.optional?"<span class='opt'>Facultatif</span>":"")+(t.note?"<span class='note'>"+t.note+"</span>":"")+(t.href?"<span class='go'>"+(t.linkLabel||"▶ Voir")+"</span>":"")+"</div><div class='check'>✓</div>");
+          "<div class='emoji'>"+t.emoji+"</div><div class='label'>"+t.label+(t.optional?"<span class='opt'>Facultatif</span>":"")+(t.note?"<span class='note'>"+t.note+"</span>":"")+(t.href?"<span class='go'>"+(t.linkLabel||"▶ Voir")+"</span>":"")+"</div>"+(hhmm?"<div class='when'>"+hhmm[1]+"</div>":"")+"<div class='check'>✓</div>");
         function toggle(){ C.setDone(k,t,now,!d); lastTouch=Date.now(); render(); }
         if(t.href){
           row.onclick=function(){ location.href=C.linkTo(t.href, "tablet.html?kid="+k+C.dateParams().replace(/^&/,"&")); };
@@ -184,25 +206,58 @@
       colsEl.appendChild(col);
     }
 
+    // Barre du haut (heure, date, bandeau) : mise à jour sans toucher aux listes
+    function updateTop(now){
+      var h=now.getHours()+now.getMinutes()/60;
+      document.getElementById("clock").textContent=C.pad2(now.getHours())+":"+C.pad2(now.getMinutes());
+      document.getElementById("date").textContent=C.DAY_NAMES[now.getDay()]+" "+now.getDate()+" "+C.MONTHS[now.getMonth()];
+      backEl.style.display=current?"block":"none";
+      var banner=document.getElementById("banner");
+      banner.className=""; banner.textContent="";
+      var tb=C.timeBanner(h, C.isRestDay(now)); if(tb){ banner.textContent=tb.t; banner.className=tb.k; }
+    }
+
     function render(){
       var scroll=0, old=colsEl.querySelector(".list");
       if(old) scroll=old.scrollTop;
 
       var now=C.now(), tomorrow=C.addDays(now,1);
       var h=now.getHours()+now.getMinutes()/60;
-      document.getElementById("clock").textContent=C.pad2(now.getHours())+":"+C.pad2(now.getMinutes());
-      document.getElementById("date").textContent=C.DAY_NAMES[now.getDay()]+" "+now.getDate()+" "+C.MONTHS[now.getMonth()];
-      backEl.style.display=current?"block":"none";
-
-      var banner=document.getElementById("banner");
-      banner.className=""; banner.textContent="";
-      var tb=C.timeBanner(h, C.isRestDay(now)); if(tb){ banner.textContent=tb.t; banner.className=tb.k; }
+      updateTop(now);
 
       colsEl.innerHTML="";
       if(current) renderChild(current,now,tomorrow,h); else renderHome(now,tomorrow,h);
       var nl=colsEl.querySelector(".list"); if(nl) nl.scrollTop=scroll;
+      lastKey=viewKey(now);
+      syncPill();
     }
 
+    // ---- État de la synchro : rien quand tout va bien ----
+    function syncPill(){
+      var se=document.getElementById("sync"), st=window.Sync?window.Sync.state(current):{k:"local",n:0};
+      if(window.LOAD_FAILED && (!window.Sync || !window.Sync.enabled)) st={k:"reload",n:0};
+      var txt={out:"🔒 Connecter la tablette", other:"🔒 Pas partagé", denied:"⛔ Accès refusé",
+               config:"⚙️ Réglage Firebase à revoir", reload:"⚠️ Recharger la page",
+               offline:"📴 Pas de réseau"+(st.n?" · "+st.n+" en attente":"")}[st.k];
+      se.className=st.k;
+      se.style.display=txt?"block":"none";
+      se.textContent=txt||"";
+      se.onclick=st.k==="reload"?function(){ location.reload(); }:
+        (st.k==="out"||st.k==="other"||st.k==="denied")?function(){ location.href="connexion.html"; }:null;
+    }
+
+    // On ne redessine les listes que si ce qu'elles montrent a changé (redessiner sous le doigt fait perdre le toucher)
+    function phase(now){ var h=now.getHours()+now.getMinutes()/60; return h>=19?"off":(h>=18?"m"+Math.round((19-h)*60):"day"); }
+    function viewKey(now){ return signature()+"#"+phase(now); }
+    function signature(){
+      var now=C.now(), tm=C.addDays(now,1), out=[current||""];
+      KIDS.forEach(function(k){
+        C.visibleTasks(k, window.CHILDREN[k], now, tm).forEach(function(t){ out.push(t.id+"="+(C.doneValue(k,t,now)||"")); });
+      });
+      return out.join("|");
+    }
+    function onRemote(){ if(viewKey(C.now())!==lastKey) render(); else syncPill(); }
+    C.watch(KIDS, C.now(), onRemote);   // coches faites sur les téléphones, en direct
     render();
     C.refreshVac(render);
     function showWeather(){
@@ -216,7 +271,8 @@
     setInterval(function(){
       if(C.dateKey(C.now())!==loadedKey && location.search.indexOf("date=")===-1){ location.reload(); return; }
       if(current && Date.now()-lastTouch>90000) current=null;   // retour auto à l'accueil
-      render();
+      var now=C.now();
+      if(viewKey(now)!==lastKey) render(); else { updateTop(now); syncPill(); }
     }, 20000);
   }
 })();

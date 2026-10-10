@@ -1,13 +1,14 @@
 /* ================================================================
    Cœur commun (pages enfant + tablette) : calendrier, liste des
-   tâches du jour, mémorisation des coches.
+   tâches du jour, mémorisation des coches (Firebase via sync.js si
+   l'appareil est connecté, sinon sur l'appareil).
    Écrit en JavaScript ancien (ES5) pour tourner sur un vieil iPad
    (pas de fetch, padStart, URLSearchParams, AbortController...).
    ================================================================ */
 (function(){
   "use strict";
 
-  var VERSION = "v1";
+  var VERSION = "v2";   // v2 : identifiants de tâche stables (ne dépendent plus de la position)
   var DAY_NAMES = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
   var MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
 
@@ -136,7 +137,7 @@
     function visExtra(x){
       if(x.days && x.days.indexOf(dow)===-1) return false;
       if(x.schoolOnly && !school) return false;
-      if(x.weekendOnly && !isWeekend) return false;
+      if((x.weekendOnly || x.scope==="weekend") && !isWeekend) return false;   // scope "weekend" = 1 fois samedi OU dimanche
       return true;
     }
     function pushExtras(arr, block){
@@ -230,24 +231,109 @@
     if(schoolT) t.push({block:"soir", emoji:"🎒", label:"Préparer mon sac pour demain"});
     t.push({block:"soir", emoji:"🚻", label:"Aller aux toilettes avant de me coucher"});
 
-    t.forEach(function(task,i){
+    // Identifiant stable : bloc + libellé (le même samedi et dimanche, sur tous les appareils)
+    var seen={};
+    t.forEach(function(task){
       task.scope=task.scope||"daily";
       task.gate=!!blockInfo(task.block).gate && !task.optional && !(restDay && task.block==="avant19");
-      task.id=task.block+"_"+i+"_"+task.label.replace(/[^a-zA-Z]/g,"").slice(0,10);
+      var id=task.block+"_"+task.label.replace(/[^a-zA-Z0-9]/g,"").slice(0,40);
+      seen[id]=(seen[id]||0)+1;
+      task.id=seen[id]>1?id+"_"+seen[id]:id;
     });
     return t;
   }
 
-  // ---- Mémorisation des coches (par appareil) ----
-  function storageKey(child, task, today){
-    var scopeK=(task.scope==="weekend")?("WE-"+isoWeekKey(today)):dateKey(today);
-    return "chores:"+child+":"+VERSION+":"+scopeK+":"+task.id;
+  // ---- Mémorisation des coches ----
+  // Valeur d'une coche = "AAAA-MM-JJ HH:MM" (jour et heure où elle a été cochée).
+  // Période : le jour, ou le week-end entier pour les tâches « 1 fois ce week-end ».
+  function periodKey(task, today){ return task.scope==="weekend" ? weekendKey(today) : ymd(today); }
+  function weekendKey(d){ return "WE-"+isoWeekKey(d); }
+  function stamp(today, real){ var n=real?new Date():now(); return ymd(today)+" "+pad2(n.getHours())+":"+pad2(n.getMinutes()); }
+  // En mode test (?date=…), version "v2t" : jamais envoyées à la base, effacées au chargement normal suivant
+  function storageKey(child, task, today){ return "chores:"+child+":"+VERSION+(qs("date")?"t":"")+":"+periodKey(task,today)+":"+task.id; }
+  // Mode test (?date=…) : coches gardées sur l'appareil, pour ne pas écrire de fausses dates dans la base
+  // (sauf &sync=1 sur un serveur local, pour tester la synchro elle-même).
+  var LOCALHOST=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  function testSync(){ return LOCALHOST && qs("sync")==="1"; }
+  function synced(child){ return !!(window.Sync && window.Sync.active(child)) && (!qs("date") || testSync()); }
+
+  function doneValue(child, task, today){
+    if(synced(child)) return window.Sync.get(periodKey(task,today), child, task.id);
+    try{ return localStorage.getItem(storageKey(child,task,today)); }catch(e){ return null; }
   }
-  function isDone(child, task, today){
-    try{ return localStorage.getItem(storageKey(child,task,today))==="1"; }catch(e){ return false; }
-  }
+  function isDone(child, task, today){ return !!doneValue(child,task,today); }
   function setDone(child, task, today, v){
-    try{ if(v) localStorage.setItem(storageKey(child,task,today),"1"); else localStorage.removeItem(storageKey(child,task,today)); }catch(e){}
+    if(synced(child)){ window.Sync.set(periodKey(task,today), child, task.id, v?stamp(today,!qs("date")):null); return; }
+    var val=v?stamp(today):null;
+    try{ if(val) localStorage.setItem(storageKey(child,task,today),val); else localStorage.removeItem(storageKey(child,task,today)); }catch(e){}
+  }
+
+  // Tâches à afficher : une tâche « 1 fois ce week-end » faite samedi disparaît dimanche.
+  function visibleTasks(child, cfg, today, tomorrow){
+    var td=ymd(today);
+    return buildTasks(cfg,today,tomorrow).filter(function(t){
+      if(t.scope!=="weekend") return true;
+      var v=doneValue(child,t,today);
+      return !(v && String(v).slice(0,10)<td);
+    });
+  }
+
+  // La page déclare les enfants qu'elle affiche : reçoit les coches des autres appareils en direct.
+  function watch(kids, today, onChange){
+    var dow=today.getDay(), ps=[ymd(today)];
+    if(dow===0||dow===6) ps.push(weekendKey(today));
+    var test=!!qs("date"), uploaded=!!test;
+    if(window.Sync && (!test || testSync())){
+      window.Sync.watch(ps, kids, function(){
+        if(!uploaded && window.Sync.ready()){ uploaded=true; uploadLocal(ps, kids); }
+        if(onChange) onChange();
+      });
+    }
+    if(!test) pruneLocal(ps);   // mode test : on ne fait pas le ménage du vrai jour
+  }
+  // Coches faites sur l'appareil avant sa connexion : envoyées à la base, puis retirées de l'appareil
+  function uploadLocal(ps, kids){
+    try{
+      var moves=[], i, k, p;
+      for(i=0;i<localStorage.length;i++){
+        k=localStorage.key(i);
+        if(!k || k.indexOf("chores:")!==0) continue;
+        p=k.split(":");   // chores:<enfant>:<version>:<période>:<tâche>
+        if(p.length===5 && p[2]===VERSION && ps.indexOf(p[3])!==-1 && kids.indexOf(p[1])!==-1 && synced(p[1])) moves.push(p.concat([k]));
+      }
+      for(i=0;i<moves.length;i++){
+        var m=moves[i], v=localStorage.getItem(m[5]);
+        if(v && !window.Sync.get(m[3], m[1], m[4])) window.Sync.set(m[3], m[1], m[4], v);
+        localStorage.removeItem(m[5]);
+      }
+    }catch(e){}
+  }
+  // Ménage du stockage de l'appareil : on ne garde que les coches du jour / du week-end en cours
+  function pruneLocal(ps){
+    try{
+      var drop=[], i, k, p;
+      for(i=0;i<localStorage.length;i++){
+        k=localStorage.key(i);
+        if(!k || k.indexOf("chores:")!==0) continue;
+        p=k.split(":");
+        if(p[2]!==VERSION || ps.indexOf(p[3])===-1) drop.push(k);
+      }
+      for(i=0;i<drop.length;i++) localStorage.removeItem(drop[i]);
+    }catch(e){}
+  }
+
+  // Petit message d'état de la synchro (null = rien à signaler)
+  function syncBadge(child){
+    if(window.LOAD_FAILED && (!window.Sync || !window.Sync.enabled)) return {k:"warn", t:"⚠️ La synchro n'a pas pu se charger : recharge la page.", link:location.pathname.split("/").pop()+location.search, lt:"Recharger"};
+    if(!window.Sync) return null;
+    var st=window.Sync.state(child), n=st.n;
+    var who=st.role==="famille"?"toute la famille":((window.CHILDREN||{})[st.role]||{}).name||st.role;
+    if(st.k==="out") return {k:"warn", t:"🔒 Appareil pas connecté : les coches restent sur cet appareil.", link:"connexion.html", lt:"Connecter"};
+    if(st.k==="other") return {k:"warn", t:"🔒 Cet appareil est connecté pour "+who+" : cette page n'est pas partagée.", link:"connexion.html", lt:"Changer"};
+    if(st.k==="denied") return {k:"warn", t:"⛔ La base refuse l'accès à cet appareil.", link:"connexion.html", lt:"Reconnecter"};
+    if(st.k==="config") return {k:"warn", t:"⚙️ Réglage Firebase à revoir (clé API) : les coches attendent sur l'appareil."+(n?" ("+n+")":"")};
+    if(st.k==="offline") return {k:"info", t:"📴 Pas de réseau"+(n?" : "+(n>1?n+" coches partiront":"1 coche partira")+" dès que possible.":".")};
+    return null;
   }
 
   // ---- Petit GET JSON sans fetch ----
@@ -303,7 +389,7 @@
 
 
   // ---- Météo (Chindrieux 73310) via Open-Meteo, sans clé API ----
-  var WX_LAT=45.81948, WX_LON=5.85024, WX_CACHE="wxChindrieux2";
+  var WX_LAT=45.81948, WX_LON=5.85024, WX_CACHE="wxChindrieux3";
   function wxInfo(c){
     if(c===0) return {e:"☀️",l:"Ensoleillé"};
     if(c===1) return {e:"🌤️",l:"Plutôt ensoleillé"};
@@ -332,16 +418,17 @@
     if(wxRainy(d.code,d.p,d.sum)) h+=" ☔ Et prends un k-way, il peut pleuvoir.";
     return h;
   }
+  function num(x){ var n=parseFloat(x); return isNaN(n)?null:Math.round(n*10)/10; }
   // transforme la réponse Open-Meteo en une liste de jours (aujourd'hui, demain)
   function wxDays(j){
     var d=j.daily, hr=j.hourly||{}, out=[], i;
     for(i=0;i<d.time.length;i++){
       var t=hr.temperature_2m;
       out.push({
-        code:d.weather_code[i],
+        code:+d.weather_code[i],
         tmax:Math.round(d.temperature_2m_max[i]), tmin:Math.round(d.temperature_2m_min[i]),
-        p:d.precipitation_probability_max?d.precipitation_probability_max[i]:null,
-        sum:d.precipitation_sum?d.precipitation_sum[i]:null,
+        p:num(d.precipitation_probability_max&&d.precipitation_probability_max[i]),
+        sum:num(d.precipitation_sum&&d.precipitation_sum[i]),
         am:(t&&t[i*24+8]!=null)?Math.round(t[i*24+8]):null,
         pm:(t&&t[i*24+15]!=null)?Math.round(t[i*24+15]):null
       });
@@ -397,9 +484,10 @@
 
   // ---- Lien vers une page d'exercices, avec retour automatique ----
   function dateParams(){
-    var d=qs("date"), t=qs("time"), x="";
+    var d=qs("date"), t=qs("time"), sy=qs("sync"), x="";
     if(d) x+="&date="+encodeURIComponent(d);
     if(t) x+="&time="+encodeURIComponent(t);
+    if(sy) x+="&sync="+encodeURIComponent(sy);
     return x;
   }
   function linkTo(href, back){
@@ -409,9 +497,10 @@
 
   window.Chores = {
     DAY_NAMES:DAY_NAMES, MONTHS:MONTHS, RULES:RULES, BLOCKS:BLOCKS,
-    now:now, addDays:addDays, dateKey:dateKey, pad2:pad2,
-    dayState:dayState, vacName:vacName, buildTasks:buildTasks, isRestDay:isRestDay,
-    isDone:isDone, setDone:setDone, getJSON:getJSON, refreshVac:refreshVac,
+    now:now, addDays:addDays, dateKey:dateKey, pad2:pad2, ymd:ymd,
+    dayState:dayState, vacName:vacName, buildTasks:buildTasks, visibleTasks:visibleTasks, isRestDay:isRestDay,
+    isDone:isDone, setDone:setDone, doneValue:doneValue, watch:watch, syncBadge:syncBadge,
+    getJSON:getJSON, refreshVac:refreshVac,
     loadWeather:loadWeather, renderWeather:renderWeather,
     screenStatus:screenStatus, timeBanner:timeBanner,
     linkTo:linkTo, dateParams:dateParams, qs:qs, storageKey:storageKey

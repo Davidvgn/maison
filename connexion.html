@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#34415c" />
+<meta name="robots" content="noindex" />
+<title>Connexion de cet appareil</title>
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:#f4f7fb;color:#23304a;margin:0 auto;padding:28px 16px 50px;max-width:480px;}
+  h1{font-size:1.5rem;text-align:center;margin:8px 0 4px;}
+  p.sub{text-align:center;color:#6b7a90;margin:0 0 22px;}
+  .card{background:#fff;border:2px solid #eef2f8;border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(40,60,90,.07);margin-bottom:14px;}
+  label{display:block;font-weight:800;font-size:.95rem;margin:4px 0 6px;}
+  input{display:block;width:100%;font-size:1.1rem;padding:12px;border:2px solid #cfd9e8;border-radius:12px;margin-bottom:14px;background:#fff;color:#23304a;}
+  input:focus{outline:none;border-color:#5b8def;}
+  button,.btn{display:block;width:100%;border:none;border-radius:14px;padding:14px;font-size:1.1rem;font-weight:800;color:#fff;background:#5b8def;cursor:pointer;text-align:center;text-decoration:none;margin-top:6px;}
+  button:disabled{background:#b9c4d6;}
+  .btn.go{background:#2fa968;}
+  button.out{background:#eef2f8;color:#a12320;}
+  .msg{display:none;border-radius:12px;padding:11px 12px;margin-bottom:14px;font-weight:700;line-height:1.35;}
+  .msg.show{display:block;}
+  .msg.err{background:#fdecec;color:#a12320;border:2px solid #f0b3b3;}
+  .msg.ok{background:#e9f7ef;color:#1f8a55;border:2px solid #9fe0bd;}
+  .msg.info{background:#fff4d6;color:#7a5600;border:2px solid #ffe39c;}
+  .who{font-size:1.15rem;font-weight:800;margin:0 0 4px;}
+  .mail{color:#6b7a90;margin:0 0 12px;word-break:break-all;}
+  .note{color:#6b7a90;font-size:.85rem;line-height:1.4;text-align:center;margin-top:18px;}
+  a.home{display:block;text-align:center;color:#2f6fd0;font-weight:800;margin-top:16px;text-decoration:none;}
+  .hide{display:none;}
+</style>
+</head>
+<body>
+  <h1>🔐 Connexion de cet appareil</h1>
+  <p class="sub">À faire une seule fois, par un parent, sur chaque téléphone et sur la tablette.</p>
+
+  <div id="msg" class="msg"></div>
+
+  <div id="connected" class="card hide">
+    <p class="who" id="who"></p>
+    <p class="mail" id="mail"></p>
+    <a class="btn go" id="open" href="index.html">Ouvrir la page</a>
+    <button class="out" id="logout" type="button">Déconnecter cet appareil</button>
+  </div>
+
+  <form id="form" class="card hide" autocomplete="on">
+    <label for="email">E-mail du compte</label>
+    <input id="email" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+    <label for="pw">Mot de passe</label>
+    <input id="pw" type="password" autocomplete="current-password" required />
+    <button id="go" type="submit">Connecter cet appareil</button>
+  </form>
+
+  <p class="note">Le mot de passe sert une fois, pour ouvrir la session : le site ne l'enregistre nulle part. Si le navigateur propose de l'enregistrer, réponds « Jamais » (surtout sur la tablette et les téléphones des enfants). L'appareil garde seulement un jeton de connexion, qu'un parent peut couper depuis la console Firebase (voir FIREBASE.md).</p>
+  <a class="home" href="index.html">← Les pages de la maison</a>
+
+<script>
+(function(){
+  var q=["children.js","firebase-config.js","sync.js"], t=Date.now();
+  function next(){
+    if(!q.length){ start(); return; }
+    var s=document.createElement("script"); s.src=q.shift()+(location.protocol==="file:"?"":"?t="+t); s.onload=next; s.onerror=function(){ window.LOAD_FAILED=true; next(); }; document.body.appendChild(s);
+  }
+  next();
+
+  function $(id){ return document.getElementById(id); }
+  function show(el, on){ el.className=el.className.replace(/\s*hide/g,"")+(on?"":" hide"); }
+  function say(kind, text){ var m=$("msg"); m.className="msg"+(text?" show "+kind:""); m.textContent=text||""; }
+
+  function start(){
+    var S=window.Sync;
+    if(!S || !S.enabled){
+      if(window.LOAD_FAILED) say("err","La page n'a pas pu se charger entièrement : recharge-la.");
+      else say("info","La synchronisation n'est pas encore configurée (firebase-config.js est vide) : pour l'instant, chaque appareil garde ses coches pour lui.");
+      return;
+    }
+    function names(role){
+      if(role==="famille") return "toute la famille (tablette / parent)";
+      var c=(window.CHILDREN||{})[role]; return c?c.name:role;
+    }
+    function page(role){ return role==="famille"?"tablet.html":role+".html"; }
+    // Liens en JavaScript : sur un vieil iOS, un lien classique quitte l'appli d'écran d'accueil (autre stockage)
+    function jsLink(a){ a.onclick=function(e){ if(e&&e.preventDefault) e.preventDefault(); location.href=a.getAttribute("href"); }; }
+    jsLink($("open"));
+    var homes=document.querySelectorAll("a.home"); for(var hi=0;hi<homes.length;hi++) jsLink(homes[hi]);
+
+    function refresh(){
+      var a=S.account();
+      if(a && a.role){
+        show($("form"),false); show($("connected"),true);
+        $("who").textContent="✅ Connecté pour "+names(a.role);
+        $("mail").textContent=a.email||"";
+        $("open").href=page(a.role);
+        $("open").textContent="Ouvrir la page de "+(a.role==="famille"?"la tablette":names(a.role));
+      } else {
+        show($("connected"),false); show($("form"),true);
+        if(!$("email").value) $("email").value=S.lastEmail();
+      }
+    }
+
+    $("form").onsubmit=function(e){
+      if(e && e.preventDefault) e.preventDefault();
+      var btn=$("go"), pw=$("pw");
+      btn.disabled=true; btn.textContent="Connexion…"; say("","");
+      S.signIn($("email").value, pw.value, function(err, role){
+        pw.value="";   // le mot de passe ne reste pas dans la page
+        btn.disabled=false; btn.textContent="Connecter cet appareil";
+        if(err){ say("err", err); return; }
+        say("ok","C'est fait : cet appareil est connecté pour "+names(role)+".");
+        refresh();
+      });
+      return false;
+    };
+
+    $("logout").onclick=function(){
+      var n=S.pendingCount();
+      if(n && !confirm(n+" coche"+(n>1?"s n'ont":" n'a")+" pas encore été envoyée"+(n>1?"s":"")+" (pas de réseau). Déconnecter quand même ?")) return;
+      S.signOut();
+      say("info","Appareil déconnecté.");
+      refresh();
+    };
+
+    refresh();
+  }
+})();
+</script>
+</body>
+</html>
