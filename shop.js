@@ -105,26 +105,45 @@
 
   // ---- Écriture : parents ----
   function exists(id){ return S.getGroup("shop", "items").hasOwnProperty(id); }
-  // +1 : une unité en plus est à acheter, donc la ligne sort du panier
+  // +1 : une unité en plus est à acheter. Sur une ligne déjà prise, ce qui est pris est acquis : la ligne revient
+  // dans « À prendre » avec seulement ce qui manque (3 pris + 1 = « ×1 »), pour ne pas racheter ce qui est dans le chariot.
   function addOne(id, by){
     if(!exists(id)) return false;
-    var cur = needs()[id];
-    var n = cur ? {q: Math.min(cur.q + 1, 99), by: cur.by, cart: false} : {q: 1, by: by || "famille", cart: false};
+    var all = needs(), cur = all.hasOwnProperty(id) ? all[id] : null;
+    var n = cur ? {q: cur.cart ? 1 : Math.min(cur.q + 1, 99), by: cur.by, cart: false} : {q: 1, by: by || "famille", cart: false};
     S.setShop("need", id, packNeed(n));
     return true;
   }
   // Change la quantité d'un delta, à partir de ce que l'appareil voit à l'instant du geste
   function bump(id, delta){
-    var cur = needs()[id];
-    if(!cur) return;
-    var q = cur.q + delta;
+    var all = needs();
+    if(!all.hasOwnProperty(id)) return;
+    var cur = all[id];
+    var q = delta > 0 && cur.cart ? delta : cur.q + delta;   // ligne prise : « + » = ce qui manque (voir addOne)
     if(q < 1) return;
     S.setShop("need", id, packNeed({q: Math.min(q, 99), by: cur.by, cart: delta > 0 ? false : cur.cart}));
   }
-  function toggleCart(id){
-    var cur = needs()[id];
-    if(!cur) return;
-    S.setShop("need", id, packNeed({q: cur.q, by: cur.by, cart: !cur.cart}));
+  // Marque une ligne prise (ou la remet dans la liste) ; sans effet si elle est déjà dans cet état,
+  // pour que deux parents qui appuient en même temps ne s'annulent pas l'un l'autre.
+  function setCart(id, on){
+    var all = needs();
+    if(!all.hasOwnProperty(id)) return false;
+    var cur = all[id], want = !!on;
+    if(cur.cart === want) return false;
+    S.setShop("need", id, packNeed({q: cur.q, by: cur.by, cart: want}));
+    return true;
+  }
+  // Les lignes de la liste à acheter avec le nom et le rayon de l'article, triées par nom
+  function lines(){
+    var n = needs(), its = items(), byId = {}, out = [], i, k, it;
+    for(i = 0; i < its.length; i++) byId[its[i].id] = its[i];
+    for(k in n){
+      if(!n.hasOwnProperty(k)) continue;
+      it = byId.hasOwnProperty(k) ? byId[k] : null;
+      out.push({id: k, name: it ? it.name : "(article supprimé) " + k, section: section(it ? it.section : "autre").key, q: n[k].q, by: n[k].by, cart: n[k].cart});
+    }
+    out.sort(byName);
+    return out;
   }
   function removeNeed(id){ S.setShop("need", id, null); }
   function finishShopping(){
@@ -185,14 +204,22 @@
     return true;
   }
 
-  // Message d'état de la synchro pour les pages de courses (null = rien à signaler)
+  // Message d'état de la synchro pour les pages de courses (null = rien à signaler).
+  // Un envoi normal dure moins d'une seconde : on n'affiche « en cours d'envoi » que s'il traîne,
+  // sinon un bandeau entrerait et sortirait de la page à chaque appui et ferait sauter les lignes.
+  var sendingSince = 0;
   function status(){
     var st = S.state(null), n = st.n || 0, s = n > 1 ? "s" : "";
-    if(st.k === "out") return "🔒 Cet appareil n'est pas connecté";
+    if(st.k === "out"){ sendingSince = 0; return "🔒 Cet appareil n'est pas connecté"; }
     if(st.k === "denied") return "⛔ La base refuse l'accès à cet appareil";
     if(st.k === "config") return "⚙️ Réglage Firebase à revoir : les changements attendent sur l'appareil";
     if(st.k === "offline") return "📴 Pas de réseau" + (n ? " · " + n + " changement" + s + " en attente d'envoi" : "");
-    if(n > 0) return "⏳ " + n + " changement" + s + " en cours d'envoi";
+    if(n > 0){
+      if(!sendingSince) sendingSince = Date.now();
+      if(Date.now() - sendingSince < 2500) return null;
+      return "⏳ " + n + " changement" + s + " en cours d'envoi";
+    }
+    sendingSince = 0;
     return null;
   }
 
@@ -202,7 +229,7 @@
     norm: norm, clean: clean, role: role, isParent: isParent,
     items: items, needs: needs, inbox: inbox, sig: sig,
     known: function(){ return S.known("shop"); },
-    addOne: addOne, bump: bump, toggleCart: toggleCart, removeNeed: removeNeed, finishShopping: finishShopping,
+    addOne: addOne, bump: bump, setCart: setCart, lines: lines, removeNeed: removeNeed, finishShopping: finishShopping,
     createItem: createItem, editItem: editItem, deleteItem: deleteItem,
     dropInbox: dropInbox, clearInbox: clearInbox, clearNeeds: clearNeeds, fileInbox: fileInbox, exists: exists,
     kidAdd: kidAdd, suggest: suggest

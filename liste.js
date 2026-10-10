@@ -55,7 +55,7 @@
 
   // les parents qui arrivent ici ont leur propre page
   if(H.isParent()){
-    var pl = el("div", "parentlink"), pa = el("a", null, "→ Ouvrir la liste des parents (gérer, cocher, terminer)");
+    var pl = el("div", "parentlink"), pa = el("a", null, "→ Ouvrir la liste des parents (préparer, en magasin)");
     pa.href = "courses.html";
     pa.onclick = function(e){ if(e && e.preventDefault) e.preventDefault(); go("courses.html?back=liste.html"); };
     pl.appendChild(pa); $("parentlink").appendChild(pl);
@@ -71,8 +71,11 @@
     var nm = el("div", "nm", it.name);
     row.appendChild(nm);
     if(need){
-      nm.appendChild(el("small", null, "déjà demandé par " + who(need.by)));
-      row.appendChild(el("span", "tag done", "✓ ×" + need.q));
+      // déjà demandé : on ne touche à rien. Si c'est déjà pris au magasin, on le dit (une nouvelle demande passe par « autre chose »)
+      nm.appendChild(el("small", null, need.cart
+        ? "déjà pris au magasin · s'il en faut encore, écris-le plus bas (« Il manque autre chose ? »)"
+        : "déjà demandé par " + who(need.by)));
+      row.appendChild(el("span", "tag done", need.cart ? "✓ pris ×" + need.q : "✓ ×" + need.q));
       return row;
     }
     var q = ui.qty[it.id] || 1;
