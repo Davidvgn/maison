@@ -13,7 +13,8 @@
    Maison  : /house/<machine>/<champ> = "AAAA-MM-JJ HH:MM" (lave-vaisselle, sèche-linge,
              étendage) : état partagé, lisible par tous les comptes (voir house.js)
    Courses : /shop/items/<id> = "Nom|rayon", /shop/need/<id> = "quantité|qui|panier",
-             /shop/inbox/<id> = "texte|qui" : liste de courses partagée (voir shop.js)
+             /shop/inbox/<id> = "texte|qui", /shop/note/<id> = "précision" (parents) :
+             liste de courses partagée (voir shop.js)
    Droits  : /members/<uid> = "jeremy" | "liam" | "nina" | "famille"
              (écrit à la main dans la console Firebase, jamais par l'appli)
    ================================================================ */

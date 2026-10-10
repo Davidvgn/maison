@@ -43,7 +43,7 @@
   function norm(text){
     var s = String(text).toLowerCase(), out = "", i, c;
     for(i = 0; i < s.length; i++){ c = s.charAt(i); out += ACCENTS[c] || c; }
-    return out.replace(/[-'’]/g, " ");
+    return out.replace(/[-'’\s]+/g, " ").replace(/^ | $/g, "");
   }
   // première lettre en majuscule (le reste est laissé tel qu'écrit : « Coca-Cola », « Kinder Cards »)
   function cap(text){
@@ -123,6 +123,7 @@
     if(!exists(id)) return false;
     var all = needs(), cur = all.hasOwnProperty(id) ? all[id] : null;
     var n = cur ? {q: cur.cart ? 1 : Math.min(cur.q + 1, 99), by: cur.by, cart: false} : {q: 1, by: by || "famille", cart: false};
+    if(cur && cur.cart) dropNote(id);   // la précision parlait de ce qui est déjà pris : la nouvelle unité repart sans
     S.setShop("need", id, packNeed(n));
     return true;
   }
@@ -133,6 +134,7 @@
     var cur = all[id];
     var q = delta > 0 && cur.cart ? delta : cur.q + delta;   // ligne prise : « + » = ce qui manque (voir addOne)
     if(q < 1) return;
+    if(delta > 0 && cur.cart) dropNote(id);
     S.setShop("need", id, packNeed({q: Math.min(q, 99), by: cur.by, cart: delta > 0 ? false : cur.cart}));
   }
   // Marque une ligne prise (ou la remet dans la liste) ; sans effet si elle est déjà dans cet état,
@@ -159,21 +161,29 @@
     return out;
   }
   // Précision d'une ligne (« Jérémy » sur une brosse à dents) : texte libre, vide = effacée
+  // Retourne false si la ligne n'existe plus (retirée par l'autre parent) : la précision ne doit pas lui survivre
   function setNote(id, text){
     var t = clean(text, 60);
-    if(t) S.setShop("note", id, t);
-    else if(notes().hasOwnProperty(id)) S.setShop("note", id, null);
+    if(t){
+      if(!needs().hasOwnProperty(id)) return false;
+      S.setShop("note", id, t);
+    } else if(notes().hasOwnProperty(id)) S.setShop("note", id, null);
+    return true;
   }
   // Ajoute une précision à celle qui existe déjà (« Jérémy » puis « Nina » = « Jérémy, Nina »)
+  // Retourne false si ça ne peut pas se faire : ligne disparue, ou précision trop longue (rien n'est coupé)
   function addNote(id, text){
     var t = clean(text, 60);
-    if(!t) return;
+    if(!t) return true;
+    if(!needs().hasOwnProperty(id)) return false;
     var cur = notes().hasOwnProperty(id) ? notes()[id] : "";
     if(cur){
-      if((", " + norm(cur) + ",").indexOf(", " + norm(t) + ",") !== -1) return;   // déjà dedans
+      if((", " + norm(cur) + ",").indexOf(", " + norm(t) + ",") !== -1) return true;   // déjà dedans
       t = cur + ", " + t;
     }
-    S.setShop("note", id, t.slice(0, 60));
+    if(t.length > 60) return false;
+    S.setShop("note", id, t);
+    return true;
   }
   function dropNote(id){ if(notes().hasOwnProperty(id)) S.setShop("note", id, null); }
   function removeNeed(id){ S.setShop("need", id, null); dropNote(id); }
@@ -262,7 +272,7 @@
     status: status,
     SECTIONS: SECTIONS, WHO: WHO, section: section,
     norm: norm, clean: clean, role: role, isParent: isParent,
-    items: items, needs: needs, inbox: inbox, notes: notes, sig: sig,
+    items: items, needs: needs, inbox: inbox, notes: notes, sig: sig, cap: cap,
     setNote: setNote, addNote: addNote,
     known: function(){ return S.known("shop"); },
     addOne: addOne, bump: bump, setCart: setCart, lines: lines, removeNeed: removeNeed, finishShopping: finishShopping,
