@@ -156,17 +156,20 @@
     if(was) flash("« " + name + " » : " + was + " déjà pris, il en reste 1 à prendre.");
     else if(flashText){ flashText = ""; renderStatus(); }   // le message d'un appui précédent ne doit pas rester affiché
   }
-  function more(id, name, note){
+  function more(id, name, useNote){
     var was = takenQty(id);
     if(!H.addOne(id)){ flash("Cet article n'existe plus dans le catalogue : retire la ligne avec ✕."); return; }
-    if(note) H.addNote(id, note);
+    if(useNote && !addTypedNote(id)) return;
     sayTaken(was, name);
   }
-  // précision saisie à côté de la recherche : utilisée une fois puis vidée
-  function takeNote(){
+  // précision saisie à côté de la recherche : posée sur la ligne, puis le champ est vidé
+  // (si elle ne peut pas être ajoutée, elle reste dans le champ et on le dit)
+  function addTypedNote(id){
     var f = $("note"), v = f.value;
-    f.value = "";
-    return v;
+    if(!v) return true;
+    if(H.addNote(id, v)){ f.value = ""; return true; }
+    flash("Précision trop longue (60 caractères au plus) : raccourcis-la ou modifie celle de la ligne.");
+    return false;
   }
 
   function sectionSelect(value, onchange){
@@ -299,7 +302,10 @@
     if(ui.noteEditing === r.id){
       var box = el("div", "inline"), inp = textInput(ui.noteText, "Précision (ex. Jérémy)", function(v){ ui.noteText = v; });
       inp.maxLength = 60;
-      var save = function(){ H.setNote(r.id, ui.noteText); ui.noteEditing = null; render(); };
+      var save = function(){
+        if(!H.setNote(r.id, ui.noteText)) flash("Cette ligne vient d'être retirée : la précision n'a pas été gardée.");
+        ui.noteEditing = null; render();
+      };
       inp.onkeydown = function(e){ if(e && (e.key === "Enter" || e.keyCode === 13)) save(); };
       box.appendChild(inp);
       box.appendChild(btn("Enregistrer", "ok", save));
@@ -399,22 +405,22 @@
       nm.appendChild(el("small", null, H.section(it.section).emoji + " " + H.section(it.section).name));
       row.appendChild(nm);
       if(n.hasOwnProperty(it.id)) row.appendChild(el("span", "tag", "×" + n[it.id].q));
-      row.appendChild(btn("＋", "sm ok", function(){ more(it.id, it.name, takeNote()); render(); }));
+      row.appendChild(btn("＋", "sm ok", function(){ more(it.id, it.name, true); render(); }));
       box.appendChild(row);
     });
     if(!found.length) box.appendChild(el("div", "empty", "Aucun article de ce nom."));
     if(!exact && tn.length >= 2){
       if(!ui.creating){
-        box.appendChild(btn("➕ Créer « " + H.clean(text, 40) + " »", "ghost", function(){ ui.creating = true; ui.create = {section: "autre"}; render(); }));
+        box.appendChild(btn("➕ Créer « " + H.cap(H.clean(text, 40)) + " »", "ghost", function(){ ui.creating = true; ui.create = {section: "autre"}; render(); }));
       } else {
         var f = el("div", "inline");
-        f.appendChild(el("div", "sec", "Nouvel article « " + H.clean(text, 40) + " » : dans quel rayon ?"));
+        f.appendChild(el("div", "sec", "Nouvel article « " + H.cap(H.clean(text, 40)) + " » : dans quel rayon ?"));
         f.appendChild(sectionSelect(ui.create.section, function(v){ ui.create.section = v; }));
         f.appendChild(btn("Créer et ajouter à la liste", "ok", function(){
           var id = H.createItem(text, ui.create.section);
           if(!id) return;
           H.addOne(id);
-          H.addNote(id, takeNote());
+          addTypedNote(id);
           ui.creating = false; $("search").value = ""; render();
         }));
         f.appendChild(btn("Annuler", "ghost", function(){ ui.creating = false; render(); }));
@@ -492,6 +498,11 @@
     lastSig = H.sig();
     var lines = H.lines(), left = 0, i;
     for(i = 0; i < lines.length; i++){ if(!lines[i].cart) left++; }
+    if(ui.noteEditing){   // l'éditeur ne doit pas survivre à sa ligne (et se rouvrir sur une ligne ajoutée plus tard)
+      var still = false;
+      for(i = 0; i < lines.length; i++){ if(lines[i].id === ui.noteEditing){ still = true; break; } }
+      if(!still){ ui.noteEditing = null; ui.noteText = ""; }
+    }
     renderModes(left, H.inbox().length);
     // le bandeau « Annuler » ne vaut que tant que la ligne est encore prise (remise ou retirée par l'autre parent)
     if(undoId){
@@ -511,7 +522,7 @@
   function typing(){
     if(ui.mode === "shop") return false;
     var a = document.activeElement;
-    return !!(a && a.tagName && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && a.id !== "search" && app.contains(a));
+    return !!(a && a.tagName && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && a.id !== "search" && a.id !== "note" && app.contains(a));
   }
   var touchAt = 0, holdTimer = null;
   function onChange(){
