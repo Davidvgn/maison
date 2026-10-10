@@ -256,7 +256,7 @@
   function enqueue(path, v){
     var q = readQ(), out = [];
     for(var i = 0; i < q.length; i++){ if(q[i].p !== path) out.push(q[i]); }
-    out.push({p: path, v: v == null ? null : v, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8)});
+    out.push({p: path, v: v == null ? null : v, t: Date.now(), id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8)});
     writeQ(out);
     notify();
     flush();
@@ -286,9 +286,17 @@
     retryTimer = setTimeout(function(){ retryTimer = null; flush(); }, retryDelay);
     retryDelay = Math.min(retryDelay * 2, 60000);
   }
+  // Un lancement (ou « étendu ») resté plus de 10 minutes dans la file n'est plus d'actualité : on ne le rejoue pas,
+  // il rouvrirait une étape déjà faite par quelqu'un d'autre.
+  function staleTrigger(op){
+    return !!(op && op.t && /^house\/[a-z]+\/(launched|hung)$/.test(op.p) && Date.now() - op.t > 600000);
+  }
   function flush(){
     if(inflight || !auth) return;
     pending = readQ();
+    var kept = [], i;
+    for(i = 0; i < pending.length; i++){ if(!staleTrigger(pending[i])) kept.push(pending[i]); }
+    if(kept.length !== pending.length){ writeQ(kept); notify(); }
     if(!pending.length) return;
     var h = pending[0];
     inflight = {p: h.p, v: h.v, id: h.id, retried: false, seq: remoteSeq[h.p] || 0};
@@ -377,14 +385,14 @@
 
   // La maison n'a jamais répondu dans cette session et échoue : on retombe sur les tâches habituelles
   function houseFailed(s){
-    if(!s.gotData && s.fails >= 2 && knownHouse){ knownHouse = false; notify(); }
+    if(!s.gotData && (s.denials >= 1 || s.fails >= 6) && knownHouse){ knownHouse = false; notify(); }
   }
 
   function Stream(base){
     this.base = base;                       // ["2026-10-10"] ou ["2026-10-10","liam"]
     this.path = base[0] === "house" ? "/house" : "/done/" + base.join("/");
     this.es = null; this.timer = null; this.renew = null;
-    this.gen = 0; this.fails = 0; this.gotData = false; this.lastSeen = 0;
+    this.gen = 0; this.fails = 0; this.denials = 0; this.gotData = false; this.lastSeen = 0;
     this.usePoll = !window.EventSource || pollRemembered();
     this.stopped = false; this.cancelled = false;
   }
@@ -459,13 +467,16 @@
       if(st === 200){
         s.fails = 0; s.gotData = true; s.lastSeen = Date.now(); netDown = false;
         if(s.esFailed && s.base[0] !== "house"){ rememberPoll(true); s.esFailed = false; }   // le réseau marche mais pas EventSource : on s'en souvient
+        s.denials = 0;
+        // la maison : le flux en direct a pu échouer parce que les droits n'étaient pas encore publiés, pas parce qu'EventSource est cassé : on le retente
+        if(s.base[0] === "house" && window.EventSource && !pollRemembered()) s.usePoll = false;
         if(s.base[0] === "house") knownHouse = true;
         applyAt(s.base, "/", j, false); keepLocalSince(t0, s.base); notify();
       }
       else if(st === 401 || st === 403){
         s.esFailed = false;   // un refus de la base prouve que le souci n'est pas EventSource
         s.fails++;
-        if(s.base[0] === "house"){ houseFailed(s); notify(); }
+        if(s.base[0] === "house"){ s.denials++; houseFailed(s); notify(); }
         else { dropToken(); if(s.fails >= 2) checkRole(); }
       }
       else { s.fails++; if(s.base[0] !== "house") netDown = true; notify(); }
@@ -473,7 +484,8 @@
     });
   };
   Stream.prototype.delay = function(){
-    if(this.base[0] === "house" && this.fails >= 3 && !this.gotData) return 300000;
+    // la maison refusée par la base (droits pas encore publiés) : on ne harcèle pas ; une simple panne réseau garde le rythme normal
+    if(this.base[0] === "house" && this.denials >= 2 && !this.gotData) return 300000;
     return Math.min(5000 * Math.pow(2, this.fails), 60000);
   };
   Stream.prototype.later = function(){
