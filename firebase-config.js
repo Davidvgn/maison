@@ -7,6 +7,6 @@
    Tant que c'est vide, chaque appareil garde ses coches pour lui (comme avant).
    ================================================================ */
 window.FIREBASE_CONFIG = {
-  apiKey: "",        // Paramètres du projet > Général > Vos applications > Clé API Web
-  databaseURL: ""    // Realtime Database > Données > adresse en haut (https://...firebasedatabase.app)
+  apiKey: "AIzaSyCKsAyHM5oF6cQf4STOjYyvDOa5ivnbGLU",                              // Paramètres du projet > Général > Vos applications > Clé API Web
+  databaseURL: "https://maison-vignon-default-rtdb.europe-west1.firebasedatabase.app"  // Realtime Database > Données > adresse en haut
 };
