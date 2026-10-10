@@ -196,7 +196,7 @@
 
       var banner=document.getElementById("banner");
       banner.className=""; banner.textContent="";
-      var tb=C.timeBanner(h); if(tb){ banner.textContent=tb.t; banner.className=tb.k; }
+      var tb=C.timeBanner(h, C.isRestDay(now)); if(tb){ banner.textContent=tb.t; banner.className=tb.k; }
 
       colsEl.innerHTML="";
       if(current) renderChild(current,now,tomorrow,h); else renderHome(now,tomorrow,h);

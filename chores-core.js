@@ -22,6 +22,7 @@
   ];
 
   // gate = les tâches du bloc doivent être faites avant d'avoir droit aux écrans
+  // (sauf « Avant 19 h » le mercredi et le week-end, jours de repos : voir buildTasks)
   var BLOCKS = [
     {key:"matin",    emoji:"☀️", title:"Le matin",       sub:"",                     gate:true},
     {key:"rentrant", emoji:"🏠", title:"En rentrant",    sub:"après l'école",        gate:true},
@@ -119,12 +120,16 @@
     return t.getUTCFullYear()+"-W"+w;
   }
 
+  // Jours de repos (mercredi, samedi, dimanche) : « Avant 19 h » ne conditionne pas les écrans
+  function isRestDay(d){ var w=d.getDay(); return w===3||w===0||w===6; }
+
   // ---- Construction des tâches du jour ----
   function buildTasks(cfg, today, tomorrow){
     var dow=today.getDay();
     var st=dayState(today,cfg), stm=dayState(tomorrow,cfg);
     var school=st.school, schoolT=stm.school;
     var isWed=(dow===3), isWeekend=(dow===0||dow===6);
+    var restDay=isRestDay(today);   // jours de repos : « Avant 19 h » ne conditionne pas les écrans
     var hairDays=cfg.hairDays||[3,0];
     var t=[];
 
@@ -162,8 +167,11 @@
       pushExtras(cfg.afterSchoolExtra, "rentrant");
     }
 
-    // APPRENDRE ET LIRE (tous les jours)
-    if(cfg.poetry){
+    // APPRENDRE ET LIRE (tous les jours) — le week-end, révisions + dictée avec Papa
+    if(isWeekend){
+      t.push({block:"apprendre", emoji:"✍️", label:cfg.poetry?"Réviser mes leçons et/ou ma poésie + dictée avec Papa":"Réviser mes leçons + dictée avec Papa",
+        note:cfg.poetry?"Poésie : je relis ce que je sais + j'apprends au moins 2 lignes de plus":undefined});
+    } else if(cfg.poetry){
       t.push({block:"apprendre", emoji:"📖", label:"Réviser ma poésie (ou, s'il n'y en a pas, une de mes leçons)", note:"Poésie : je relis ce que je sais + j'apprends au moins 2 lignes de plus"});
     }
     t.push({block:"apprendre", emoji:"📚", label:"Lire au moins une page de mon livre"});
@@ -224,7 +232,7 @@
 
     t.forEach(function(task,i){
       task.scope=task.scope||"daily";
-      task.gate=!!blockInfo(task.block).gate && !task.optional;
+      task.gate=!!blockInfo(task.block).gate && !task.optional && !(restDay && task.block==="avant19");
       task.id=task.block+"_"+i+"_"+task.label.replace(/[^a-zA-Z]/g,"").slice(0,10);
     });
     return t;
@@ -379,11 +387,11 @@
     }
     return {k:"green", t:"✅ Écran OK", s:"Jusqu'à 19 h"};
   }
-  function timeBanner(h){
+  function timeBanner(h, rest){
     if(h>=21) return {k:"warn", t:"🌙 Lumière éteinte"};
     if(h>=20.5) return {k:"warn", t:"🛏️ Au lit — lecture 30 min"};
     if(h>=19) return {k:"warn", t:"📵 Plus d'écran"};
-    if(h>=18) return {k:"info", t:"🚿 18 h-19 h : douche, pyjama et vêtements, puis écran jusqu'à 19 h"};
+    if(h>=18) return {k:"info", t:rest?"🚿 18 h-19 h : douche, pyjama et vêtements avant 19 h":"🚿 18 h-19 h : douche, pyjama et vêtements, puis écran jusqu'à 19 h"};
     return null;
   }
 
@@ -402,7 +410,7 @@
   window.Chores = {
     DAY_NAMES:DAY_NAMES, MONTHS:MONTHS, RULES:RULES, BLOCKS:BLOCKS,
     now:now, addDays:addDays, dateKey:dateKey, pad2:pad2,
-    dayState:dayState, vacName:vacName, buildTasks:buildTasks,
+    dayState:dayState, vacName:vacName, buildTasks:buildTasks, isRestDay:isRestDay,
     isDone:isDone, setDone:setDone, getJSON:getJSON, refreshVac:refreshVac,
     loadWeather:loadWeather, renderWeather:renderWeather,
     screenStatus:screenStatus, timeBanner:timeBanner,

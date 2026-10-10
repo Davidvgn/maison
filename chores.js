@@ -31,7 +31,7 @@
     var st=C.screenStatus(h,gateLeft);
     lightEl.className="screen-light "+st.k;
     lightEl.innerHTML="<div class='t'>"+st.t+"</div><div class='s'>"+st.s+(st.k==="green"?" · à valider sur la tablette":"")+"</div>";
-    var tb=C.timeBanner(h);
+    var tb=C.timeBanner(h, C.isRestDay(n));
     tbEl.className="time-banner"+(tb?" show "+tb.k:"");
     tbEl.textContent=tb?tb.t:"";
   }
