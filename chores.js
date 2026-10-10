@@ -74,7 +74,7 @@
   }
 
   function updateProgress(){
-    var req=tasks.filter(function(t){return !t.optional;});   // les tâches facultatives ne comptent pas
+    var req=tasks.filter(function(t){return !t.optional && !t.house;});   // les tâches facultatives et celles de la maison ne comptent pas
     var total=req.length, done=req.filter(isDone).length;
     var pct=total?Math.round(done/total*100):0;
     document.getElementById("progressText").textContent=done+" / "+total+" fait";
@@ -137,6 +137,13 @@
           '<div class="check">✓</div>';
         function toggle(){
           if(reloadIfNewDay()) return;
+          if(task.house){   // tâche de la maison : cochée tout de suite, puis retirée de la liste un instant après (pas de saut sous le doigt)
+            el.classList.add("done");
+            C.setDone(CHILD,task,today,true);
+            lastSig=signature();
+            setTimeout(applyDay, 700);
+            return;
+          }
           var now=!el.classList.contains("done");
           el.classList.toggle("done",now);
           C.setDone(CHILD,task,today,now);

@@ -10,6 +10,8 @@
      et chores-core.js garde les coches sur l'appareil, comme avant.
    Données : /done/<période>/<enfant>/<tâche> = "AAAA-MM-JJ HH:MM"
              (période = "AAAA-MM-JJ" ou "WE-AAAA-Wnn" pour le week-end)
+   Maison  : /house/<machine>/<champ> = "AAAA-MM-JJ HH:MM" (lave-vaisselle, sèche-linge,
+             étendage) : état partagé, lisible par tous les comptes (voir house.js)
    Droits  : /members/<uid> = "jeremy" | "liam" | "nina" | "famille"
              (écrit à la main dans la console Firebase, jamais par l'appli)
    ================================================================ */
@@ -93,7 +95,7 @@
   var CONFIG = /API key|API_KEY|referer|PERMISSION_DENIED|PROJECT_NUMBER_MISMATCH|CONFIGURATION_NOT_FOUND|are blocked|has not been used|SERVICE_DISABLED/i;
 
   function forget(){
-    auth = null; inflight = null; tree = {};
+    auth = null; inflight = null; tree = {}; knownHouse = false;
     save(AUTH_K, null); writeQ([]); pruneCache([]);
     stopStreams(); notify();
   }
@@ -129,7 +131,7 @@
         else if((st === 400 || st === 403) && CONFIG.test(msg)){ err = "config"; configErr = true; }
         else { err = "net"; netDown = true; }
         var q = waiting; waiting = [];
-        for(var i = 0; i < q.length; i++) q[i](err, err ? null : auth.token);
+        for(var i = 0; i < q.length; i++){ try{ q[i](err, err ? null : auth.token); }catch(e){} }
         if(err) notify();
       });
   }
@@ -183,7 +185,7 @@
           var same = auth && auth.uid === a.uid;
           if(!save(AUTH_K, a)){ cb("Cet appareil n'enregistre rien (navigation privée ?) : ouvre la page en navigation normale."); return; }
           auth = a; denied = false; netDown = false; configErr = false;
-          if(!same){ writeQ([]); tree = {}; pruneCache([]); }
+          if(!same){ writeQ([]); tree = {}; knownHouse = false; pruneCache([]); }
           save(EMAIL_K, a.email);
           restart();
           cb(null, role);
@@ -216,6 +218,7 @@
 
   // ---- Coches reçues de la base : tree[période][enfant][tâche] = valeur ----
   var tree = {}, periods = [], watchedKids = [], streams = [], listeners = [];
+  var knownHouse = false;        // l'état de la maison a été reçu au moins une fois (ou lu dans le cache)
   var remoteSeq = {}, seq = 0;   // chemin -> n° du dernier changement reçu de la base
   var localAt = {};              // chemin -> dernière écriture confirmée par la base {t, v}
 
@@ -250,14 +253,22 @@
   }
 
   // Écriture : mise en file + envoi
-  function set(p, kid, task, v){
-    if(!canAccess(kid)) return;
-    var path = p + "/" + kid + "/" + task, q = readQ(), out = [];
+  function enqueue(path, v){
+    var q = readQ(), out = [];
     for(var i = 0; i < q.length; i++){ if(q[i].p !== path) out.push(q[i]); }
     out.push({p: path, v: v == null ? null : v, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8)});
     writeQ(out);
     notify();
     flush();
+  }
+  function set(p, kid, task, v){
+    if(!canAccess(kid)) return;
+    enqueue(p + "/" + kid + "/" + task, v);
+  }
+  // État de la maison : /house/<machine>/<champ> (la base décide qui a le droit d'écrire quoi)
+  function setHouse(machine, field, v){
+    if(!signedIn()) return;
+    enqueue("house/" + machine + "/" + field, v);
   }
 
   function treeSet(segs, v){
@@ -298,7 +309,8 @@
       if(inflight !== op) return;
       if(err){ inflight = null; if(err !== "out") scheduleRetry(); notify(); return; }
       var del = op.v == null;
-      var url = DB + "/done/" + op.p + ".json?" + (del ? "" : "print=silent&") + "auth=" + encodeURIComponent(tok);
+      var root = op.p.indexOf("house/") === 0 ? "/" : "/done/";
+      var url = DB + root + op.p + ".json?" + (del ? "" : "print=silent&") + "auth=" + encodeURIComponent(tok);
       req(del ? "DELETE" : "PUT", url, del ? null : JSON.stringify(op.v), "application/json", 15000, function(st){
         if(inflight !== op) return;
         if(st >= 200 && st < 300){
@@ -363,9 +375,14 @@
   function pollRemembered(){ var t = load(POLL_K); return !!(t && Date.now() - t < 86400000); }
   function rememberPoll(on){ save(POLL_K, on ? Date.now() : null); }
 
+  // La maison n'a jamais répondu dans cette session et échoue : on retombe sur les tâches habituelles
+  function houseFailed(s){
+    if(!s.gotData && s.fails >= 2 && knownHouse){ knownHouse = false; notify(); }
+  }
+
   function Stream(base){
     this.base = base;                       // ["2026-10-10"] ou ["2026-10-10","liam"]
-    this.path = "/done/" + base.join("/");
+    this.path = base[0] === "house" ? "/house" : "/done/" + base.join("/");
     this.es = null; this.timer = null; this.renew = null;
     this.gen = 0; this.fails = 0; this.gotData = false; this.lastSeen = 0;
     this.usePoll = !window.EventSource || pollRemembered();
@@ -394,6 +411,7 @@
           if(!m) return;
           if(!s.gotData){ s.gotData = true; rememberPoll(false); }
           s.fails = 0; netDown = false;
+          if(s.base[0] === "house") knownHouse = true;
           applyAt(s.base, m.path, m.data, merge);
           notify();
         };
@@ -403,6 +421,10 @@
       es.addEventListener("keep-alive", function(){ if(mine()) s.lastSeen = Date.now(); });
       es.addEventListener("cancel", function(){   // la base ne permet plus de lire : droits retirés ?
         if(!mine()) return;
+        if(s.base[0] === "house"){   // seule la maison est refusée : on réessaie plus tard, sans bannière « accès refusé »
+          s.clear(); s.fails++; houseFailed(s); s.later(); notify();
+          return;
+        }
         s.clear(); s.cancelled = true; denied = true; notify();
         setTimeout(checkRole, 3000);
       });
@@ -411,6 +433,13 @@
         if(!mine()) return;
         if(es.readyState === 2){            // refusé ou fermé pour de bon : on relance nous-mêmes
           s.clear(); s.fails++;
+          if(s.base[0] === "house"){        // la maison seule en erreur : ce n'est pas un problème de jeton ni de droits du compte
+            houseFailed(s);
+            if(!s.gotData && s.fails >= 3){ s.usePoll = true; s.start(); return; }
+            s.later();
+            notify();
+            return;
+          }
           dropToken();
           if(!s.gotData && s.fails >= 3){ s.usePoll = true; s.esFailed = true; s.start(); return; }
           if(s.fails >= 2) checkRole();
@@ -429,17 +458,27 @@
       if(s.stopped || g !== s.gen) return;
       if(st === 200){
         s.fails = 0; s.gotData = true; s.lastSeen = Date.now(); netDown = false;
-        if(s.esFailed){ rememberPoll(true); s.esFailed = false; }   // le réseau marche mais pas EventSource : on s'en souvient
+        if(s.esFailed && s.base[0] !== "house"){ rememberPoll(true); s.esFailed = false; }   // le réseau marche mais pas EventSource : on s'en souvient
+        if(s.base[0] === "house") knownHouse = true;
         applyAt(s.base, "/", j, false); keepLocalSince(t0, s.base); notify();
       }
-      else if(st === 401 || st === 403){ dropToken(); s.fails++; if(s.fails >= 2) checkRole(); }
-      else { s.fails++; netDown = true; notify(); }
-      s.timer = setTimeout(function(){ s.timer = null; s.start(); }, st === 200 ? 20000 : Math.min(5000 * Math.pow(2, s.fails), 60000));
+      else if(st === 401 || st === 403){
+        s.esFailed = false;   // un refus de la base prouve que le souci n'est pas EventSource
+        s.fails++;
+        if(s.base[0] === "house"){ houseFailed(s); notify(); }
+        else { dropToken(); if(s.fails >= 2) checkRole(); }
+      }
+      else { s.fails++; if(s.base[0] !== "house") netDown = true; notify(); }
+      s.timer = setTimeout(function(){ s.timer = null; s.start(); }, st === 200 ? 20000 : s.delay());
     });
+  };
+  Stream.prototype.delay = function(){
+    if(this.base[0] === "house" && this.fails >= 3 && !this.gotData) return 300000;
+    return Math.min(5000 * Math.pow(2, this.fails), 60000);
   };
   Stream.prototype.later = function(){
     var s = this;
-    s.timer = setTimeout(function(){ s.timer = null; s.start(); }, Math.min(5000 * Math.pow(2, s.fails), 60000));
+    s.timer = setTimeout(function(){ s.timer = null; s.start(); }, s.delay());
   };
   Stream.prototype.clear = function(){
     this.gen++;
@@ -464,6 +503,7 @@
     for(var i = 0; i < streams.length; i++){
       var s = streams[i];
       if(s.es && Date.now() - s.lastSeen > 95000){ s.fails = Math.min(s.fails + 1, 4); s.start(); }   // muet : on rouvre (sans conclure)
+      else if(!s.es && !s.timer && !s.cancelled && !s.stopped && signedIn() && !denied) s.start();      // ni ouvert ni en attente : on relance
     }
   }
 
@@ -478,6 +518,7 @@
       if(auth.role === "famille") streams.push(new Stream([periods[i]]));
       else if(indexOf(watchedKids, auth.role) !== -1) streams.push(new Stream([periods[i], auth.role]));
     }
+    if(streams.length) streams.push(new Stream(["house"]));   // la maison suit les pages qui affichent une liste
     for(var j = 0; j < streams.length; j++) streams[j].start();
     flush();
     notify();
@@ -489,9 +530,11 @@
     if(!ENABLED) return;
     periods = ps.slice();
     watchedKids = kids.slice();
-    pruneCache(periods);
+    pruneCache(periods.concat(["house"]));
     tree = {};
     for(var i = 0; i < periods.length; i++) loadCache(periods[i]);
+    knownHouse = load(CACHE_K + "house") !== null;
+    loadCache("house");
     restart();
     checkRole();
   }
@@ -542,7 +585,7 @@
     if(netDown || navigator.onLine === false) return {k: "offline", n: n};
     if(streams.length){
       var any = false;
-      for(var i = 0; i < streams.length; i++){ if(streams[i].live()) any = true; }
+      for(var i = 0; i < streams.length; i++){ if(streams[i].base[0] !== "house" && streams[i].live()) any = true; }
       if(!any){
         if(!connSince) connSince = Date.now();
         return {k: Date.now() - connSince > 60000 ? "offline" : "connecting", n: n};
@@ -561,13 +604,19 @@
     active: canAccess,
     get: get,
     set: set,
+    setHouse: setHouse,
+    houseKnown: function(){ return knownHouse; },
     watch: watch,
     state: state,
     // Toutes les périodes suivies ont reçu au moins une fois l'état de la base
     ready: function(){
-      if(!streams.length) return false;
-      for(var i = 0; i < streams.length; i++){ if(!streams[i].gotData) return false; }
-      return true;
+      var n = 0;
+      for(var i = 0; i < streams.length; i++){
+        if(streams[i].base[0] === "house") continue;
+        n++;
+        if(!streams[i].gotData) return false;
+      }
+      return n > 0;
     },
     pendingCount: function(){ return pending.length; }
   };

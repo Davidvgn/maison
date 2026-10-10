@@ -17,6 +17,51 @@
           }
         }
       }
+    },
+    "house": {
+      ".read": "auth != null && root.child('members').child(auth.uid).val().matches(/^(jeremy|liam|nina|famille)$/)",
+      "dishwasher": {
+        "launched": {
+          ".write": "auth != null && root.child('members').child(auth.uid).val() === 'famille'",
+          ".validate": "newData.isString() && newData.val().matches(/^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d$/)"
+        },
+        "emptied": {
+          ".write": "auth != null && root.child('members').child(auth.uid).val().matches(/^(jeremy|liam|nina|famille)$/) && (newData.exists() || root.child('members').child(auth.uid).val() === 'famille')",
+          ".validate": "newData.isString() && newData.val() === root.child('house/dishwasher/launched').val()"
+        }
+      },
+      "dryer": {
+        "launched": {
+          ".write": "auth != null && root.child('members').child(auth.uid).val() === 'famille'",
+          ".validate": "newData.isString() && newData.val().matches(/^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d$/)"
+        },
+        "out": {
+          ".write": "auth != null && root.child('members').child(auth.uid).val().matches(/^(jeremy|liam|nina|famille)$/) && (newData.exists() || root.child('members').child(auth.uid).val() === 'famille')",
+          ".validate": "newData.isString() && newData.val() === root.child('house/dryer/launched').val()"
+        },
+        "folded": {
+          ".write": "auth != null && root.child('members').child(auth.uid).val().matches(/^(jeremy|liam|nina|famille)$/) && (newData.exists() || root.child('members').child(auth.uid).val() === 'famille')",
+          ".validate": "newData.isString() && newData.val() === root.child('house/dryer/out').val()"
+        }
+      },
+      "rack": {
+        "hung": {
+          ".write": "auth != null && root.child('members').child(auth.uid).val() === 'famille'",
+          ".validate": "newData.isString() && newData.val().matches(/^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d$/)"
+        },
+        "jeremy": {
+          ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'famille' || (root.child('members').child(auth.uid).val() === 'jeremy' && newData.exists()))",
+          ".validate": "newData.isString() && newData.val() === root.child('house/rack/hung').val()"
+        },
+        "liam": {
+          ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'famille' || (root.child('members').child(auth.uid).val() === 'liam' && newData.exists()))",
+          ".validate": "newData.isString() && newData.val() === root.child('house/rack/hung').val()"
+        },
+        "nina": {
+          ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'famille' || (root.child('members').child(auth.uid).val() === 'nina' && newData.exists()))",
+          ".validate": "newData.isString() && newData.val() === root.child('house/rack/hung').val()"
+        }
+      }
     }
   }
 }
