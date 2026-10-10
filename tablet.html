@@ -21,6 +21,7 @@
   #banner.info{background:#e08a1e;}
 
   #cols{flex:1;display:flex;min-height:0;padding:0 8px 8px;}
+  #cols.home{overflow-y:auto;-webkit-overflow-scrolling:touch;}   /* tablette courte : on peut faire défiler jusqu'aux cartes */
   .col{flex:1;min-width:0;margin:0 6px;background:#f4f7fb;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;}
   .col-head{flex:none;color:#fff;padding:10px 14px;display:flex;align-items:center;}
   .col-name{font-size:1.7rem;font-weight:800;}
@@ -83,6 +84,20 @@
   #sync.out,#sync.denied,#sync.other,#sync.config,#sync.reload{background:#d6392d;}
   .task .when{flex:none;font-size:.8rem;font-weight:800;color:#1f8a55;margin-right:8px;}
 
+  /* La maison : boutons des parents (lave-vaisselle, sèche-linge, étendage) */
+  #house{flex:none;display:none;margin:0 14px 10px;}
+  #house.show{display:block;}
+  #house .tiles{display:flex;flex-wrap:wrap;margin:0 -4px;}
+  #house .tile{flex:1 1 150px;margin:4px;background:#2a3650;border-radius:16px;padding:10px 12px;color:#fff;display:flex;flex-direction:column;}
+  #house .tile.busy{background:#8a5a14;}
+  #house .tn{font-size:1.05rem;font-weight:800;}
+  #house .ts{font-size:.88rem;opacity:.95;margin:4px 0 8px;line-height:1.25;flex:1;}
+  #house .tb{display:flex;align-items:center;}
+  #house .tb{flex-wrap:wrap;}
+  #house .go,#house .fin{border:none;border-radius:12px;background:#2fa968;color:#fff;font-weight:800;font-size:1rem;padding:10px 16px;margin:2px 6px 2px 0;min-height:44px;cursor:pointer;}
+  #house .fin{background:#3b7bd4;}
+  #house .undo{margin-left:auto;background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:10px;padding:8px 10px;font-weight:800;font-size:.85rem;min-height:44px;cursor:pointer;}
+
   /* Téléphone (vue parent) : cartes et météo empilées */
   @media (max-width:700px){
     #top{flex-wrap:wrap;padding:8px 12px;}
@@ -98,6 +113,10 @@
     .card .mini{width:auto;flex:1;}
     #cols.one .col{max-width:none;}
     #wx{display:none !important;}   /* vue parent sur téléphone : toute la place pour les enfants */
+    #house{margin:0 10px 6px;}
+    #house .tile{padding:8px 10px;}
+    #house .ts{font-size:.8rem;margin:2px 0 6px;}
+    #house .go,#house .fin{padding:8px 12px;font-size:.95rem;}
   }
 </style>
 </head>
@@ -110,11 +129,12 @@
   <div id="banner"></div>
 </div>
 <div id="wx"></div>
+<div id="house"></div>
 <div id="cols"></div>
 
 <script>
 (function(){
-  var q=["children.js","firebase-config.js","sync.js","chores-core.js"], t=Date.now();
+  var q=["children.js","firebase-config.js","sync.js","chores-core.js","house.js"], t=Date.now();
   function next(){
     if(!q.length){ start(); return; }
     var s=document.createElement("script"); s.src=q.shift()+(location.protocol==="file:"?"":"?t="+t); s.onload=next; s.onerror=function(){ window.LOAD_FAILED=true; next(); }; document.body.appendChild(s);
@@ -163,7 +183,7 @@
     function renderChild(k, now, tomorrow, h){
       colsEl.className="one";
       var i=info(k,now,tomorrow,h), cfg=i.cfg, done=i.done;
-      var shown0=i.tasks.filter(function(t){ return (t.block!=="soir" || h>=19) && !t.optional; });
+      var shown0=i.tasks.filter(function(t){ return (t.block!=="soir" || h>=19) && !t.optional && !t.house; });
       var col=el("div","col");
       var head=el("div","col-head","<span class='col-name'>"+cfg.name+"</span><span class='col-day'>"+i.ds.val+" · "+shown0.filter(done).length+"/"+shown0.length+"</span>");
       head.style.background=cfg.gradient;
@@ -172,7 +192,7 @@
 
       var list=el("div","list");
       var shown=i.tasks.filter(function(t){ return t.block!=="soir" || h>=19; });
-      var todo=shown.filter(function(t){return !done(t) && !t.optional;});
+      var todo=shown.filter(function(t){return !done(t) && !t.optional && !t.house;});
 
       function addTask(t){
         var d=done(t);
@@ -217,6 +237,41 @@
       var tb=C.timeBanner(h, C.isRestDay(now)); if(tb){ banner.textContent=tb.t; banner.className=tb.k; }
     }
 
+    // La maison : tuiles des parents, sur l'accueil seulement (rien si l'appareil n'est pas connecté en « famille »)
+    function renderHouse(){
+      var box=document.getElementById("house");
+      box.innerHTML="";
+      var H=window.House;
+      var on=!current && H && H.isParent() && H.known() && !C.qs("date");
+      box.className=on?"show":"";
+      if(!on) return;
+      var wrap=el("div","tiles");
+      H.tiles().forEach(function(t){
+        var tile=el("div","tile"+(t.busy?" busy":""));
+        var name=el("div","tn"); name.textContent=t.emoji+" "+t.name; tile.appendChild(name);
+        var st=el("div","ts"); st.textContent=t.text; tile.appendChild(st);
+        var row=el("div","tb");
+        if(t.canGo){
+          var go=el("button","go"); go.type="button"; go.textContent=t.label;
+          go.onclick=function(){ lastTouch=Date.now(); t.go(); };
+          row.appendChild(go);
+        }
+        if(t.fin){
+          var fi=el("button","fin"); fi.type="button"; fi.textContent=t.fin.label;
+          fi.onclick=function(){ lastTouch=Date.now(); t.fin.fn(); };
+          row.appendChild(fi);
+        }
+        if(t.undo){
+          var un=el("button","undo"); un.type="button"; un.textContent="↺ Annuler";
+          un.onclick=function(){ lastTouch=Date.now(); t.undo(); };
+          row.appendChild(un);
+        }
+        tile.appendChild(row);
+        wrap.appendChild(tile);
+      });
+      box.appendChild(wrap);
+    }
+
     function render(){
       var scroll=0, old=colsEl.querySelector(".list");
       if(old) scroll=old.scrollTop;
@@ -224,6 +279,7 @@
       var now=C.now(), tomorrow=C.addDays(now,1);
       var h=now.getHours()+now.getMinutes()/60;
       updateTop(now);
+      renderHouse();
 
       colsEl.innerHTML="";
       if(current) renderChild(current,now,tomorrow,h); else renderHome(now,tomorrow,h);
@@ -248,7 +304,7 @@
 
     // On ne redessine les listes que si ce qu'elles montrent a changé (redessiner sous le doigt fait perdre le toucher)
     function phase(now){ var h=now.getHours()+now.getMinutes()/60; return h>=19?"off":(h>=18?"m"+Math.round((19-h)*60):"day"); }
-    function viewKey(now){ return signature()+"#"+phase(now); }
+    function viewKey(now){ return signature()+"#"+phase(now)+"#"+(window.House?window.House.sig():"")+(current?"":"#home"); }
     function signature(){
       var now=C.now(), tm=C.addDays(now,1), out=[current||""];
       KIDS.forEach(function(k){

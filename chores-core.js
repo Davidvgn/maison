@@ -25,6 +25,8 @@
   // gate = les tâches du bloc doivent être faites avant d'avoir droit aux écrans
   // (sauf « Avant 19 h » le mercredi et le week-end, jours de repos : voir buildTasks)
   var BLOCKS = [
+    // État de la maison (lave-vaisselle, sèche-linge, étendage) : voir house.js ; n'apparaît que s'il y a quelque chose à faire
+    {key:"maison",    emoji:"🏡", title:"Pour la maison", sub:"",                     gate:false},
     {key:"matin",    emoji:"☀️", title:"Le matin",       sub:"",                     gate:true},
     {key:"rentrant", emoji:"🏠", title:"En rentrant",    sub:"après l'école",        gate:true},
     {key:"apprendre",emoji:"📖", title:"Apprendre et lire", sub:"",                     gate:true},
@@ -217,7 +219,8 @@
       t.push({block:"avant19", emoji:"👚", label:"Préparer mes vêtements pour demain"});
     }
 
-    t.push({block:"avant19", emoji:"🍽️", label:"Vider le lave-vaisselle", note:"D'abord je vérifie qu'il est propre. Si je ne sais pas, j'envoie un SMS pour demander si je dois le faire."});
+    // Tant que l'état de la maison n'est pas branché, la tâche habituelle reste ; ensuite c'est le bouton « Lancé » des parents qui la déclenche
+    if(!houseLive(cfg.key)) t.push({block:"avant19", emoji:"🍽️", label:"Vider le lave-vaisselle", note:"D'abord je vérifie qu'il est propre. Si je ne sais pas, j'envoie un SMS pour demander si je dois le faire."});
 
     t.push({block:"avant19", emoji:"👟", label:"Je vérifie que mes chaussures sont bien rangées dans le meuble à chaussures"});
 
@@ -258,12 +261,19 @@
   function testSync(){ return LOCALHOST && qs("sync")==="1"; }
   function synced(child){ return !!(window.Sync && window.Sync.active(child)) && (!qs("date") || testSync()); }
 
+  // L'état de la maison est branché pour cet enfant (connecté + déjà reçu au moins une fois)
+  function houseLive(child){
+    return !!(child && window.House && synced(child) && window.House.live(child));
+  }
+
   function doneValue(child, task, today){
+    if(task.house) return null;   // tâche de la maison : « à faire » tant que l'état le demande, elle disparaît ensuite
     if(synced(child)) return window.Sync.get(periodKey(task,today), child, task.id);
     try{ return localStorage.getItem(storageKey(child,task,today)); }catch(e){ return null; }
   }
   function isDone(child, task, today){ return !!doneValue(child,task,today); }
   function setDone(child, task, today, v){
+    if(task.house){ if(v && window.House) window.House.complete(task); return; }
     if(synced(child)){ window.Sync.set(periodKey(task,today), child, task.id, v?stamp(today,!qs("date")):null); return; }
     var val=v?stamp(today):null;
     try{ if(val) localStorage.setItem(storageKey(child,task,today),val); else localStorage.removeItem(storageKey(child,task,today)); }catch(e){}
@@ -272,11 +282,13 @@
   // Tâches à afficher : une tâche « 1 fois ce week-end » faite samedi disparaît dimanche.
   function visibleTasks(child, cfg, today, tomorrow){
     var td=ymd(today);
-    return buildTasks(cfg,today,tomorrow).filter(function(t){
+    var list=buildTasks(cfg,today,tomorrow).filter(function(t){
       if(t.scope!=="weekend") return true;
       var v=doneValue(child,t,today);
       return !(v && String(v).slice(0,10)<td);
     });
+    if(houseLive(child)) list=window.House.tasks(child, isRestDay(today)).concat(list);
+    return list;
   }
 
   // La page déclare les enfants qu'elle affiche : reçoit les coches des autres appareils en direct.
@@ -499,7 +511,7 @@
   window.Chores = {
     DAY_NAMES:DAY_NAMES, MONTHS:MONTHS, RULES:RULES, BLOCKS:BLOCKS,
     now:now, addDays:addDays, dateKey:dateKey, pad2:pad2, ymd:ymd,
-    dayState:dayState, vacName:vacName, buildTasks:buildTasks, visibleTasks:visibleTasks, isRestDay:isRestDay,
+    dayState:dayState, vacName:vacName, buildTasks:buildTasks, visibleTasks:visibleTasks, isRestDay:isRestDay, houseLive:houseLive,
     isDone:isDone, setDone:setDone, doneValue:doneValue, watch:watch, syncBadge:syncBadge,
     getJSON:getJSON, refreshVac:refreshVac,
     loadWeather:loadWeather, renderWeather:renderWeather,

@@ -43,7 +43,7 @@
 <script>
 (function(){
   window.CHILD_KEY="jeremy";
-  var q=["children.js","firebase-config.js","sync.js","chores-core.js","chores.js"], t=Date.now();
+  var q=["children.js","firebase-config.js","sync.js","chores-core.js","house.js","chores.js"], t=Date.now();
   function next(){ if(!q.length) return; var s=document.createElement("script"); s.src=q.shift()+(location.protocol==="file:"?"":"?t="+t); s.onload=next; s.onerror=function(){ window.LOAD_FAILED=true; next(); }; document.body.appendChild(s); }
   next();
 })();

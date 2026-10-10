@@ -25,7 +25,8 @@ Qui peut faire quoi, avec les règles de `database.rules.json` :
 - le compte `famille` (tablette + téléphone du parent) lit et coche pour les trois ;
 - n'importe quel autre compte, même créé par un inconnu avec la clé publique, n'a accès à **rien** : il n'est pas dans `members` ;
 - personne, même un compte autorisé, ne peut modifier `members` depuis le site ;
-- une coche ne peut contenir qu'une date et une heure (`2026-10-10 18:42`), à un emplacement de forme prévue.
+- une coche ne peut contenir qu'une date et une heure (`2026-10-10 18:42`), à un emplacement de forme prévue ;
+- l'état de la maison (lave-vaisselle, sèche-linge, étendage) est lisible par les comptes autorisés ; seuls les parents peuvent lancer une machine ; un enfant ne peut que **valider l'étape en cours** (la base n'accepte que la valeur du déclencheur actuel : impossible d'écrire une date truquée, de rouvrir une étape ancienne, ou de valider pour un frère ou une sœur) et jamais l'effacer. Un enfant peut en revanche fermer une étape partagée (ex. « vider le lave-vaisselle ») pour tout le monde, ce qui est voulu : le premier qui le fait.
 
 ## Mise en place (une fois, environ 20 minutes, depuis un ordinateur)
 
@@ -78,6 +79,7 @@ members
 
 ### 6. Coller les règles
 **Realtime Database > Règles** > remplace tout par le contenu de [`database.rules.json`](database.rules.json) > **Publier**.
+À refaire chaque fois que ce fichier change (ex. quand la maison a été ajoutée), **avant** de mettre le site en ligne : le site ne casse pas si les règles sont en avance, il se contente de garder les tâches habituelles tant que la base ne répond pas.
 
 Vérifie-les avec le **Rules Playground** (bouton dans l'éditeur de règles, « Authentifié » + UID) :
 
@@ -91,6 +93,14 @@ Vérifie-les avec le **Rules Playground** (bouton dans l'éditeur de règles, «
 | lecture | `/done/2026-10-10` | UID famille | | ✅ autorisé |
 | lecture | `/done/2026-10-10` | non authentifié | | ❌ refusé |
 | écriture | `/members/<ton UID>` | UID famille | `"famille"` | ❌ refusé |
+| écriture | `/house/dishwasher/launched` | UID famille | `"2026-10-10 20:05"` | ✅ autorisé |
+| écriture | `/house/dishwasher/launched` | UID de Liam | `"2026-10-10 20:05"` | ❌ refusé |
+| écriture | `/house/dishwasher/emptied` (après un `launched` de `"2026-10-10 20:05"`) | UID de Liam | `"2026-10-10 20:05"` | ✅ autorisé |
+| écriture | `/house/dishwasher/emptied` | UID de Liam | `"2000-01-01 00:00"` (autre valeur) | ❌ refusé |
+| suppression | `/house/dishwasher/emptied` | UID de Liam | | ❌ refusé |
+| écriture | `/house/rack/nina` | UID de Liam | (même valeur que `hung`) | ❌ refusé |
+| lecture | `/house` | UID de Liam | | ✅ autorisé |
+| lecture | `/house` | non authentifié | | ❌ refusé |
 
 ### 7. Récupérer la clé API web
 **⚙️ Paramètres du projet > Général > Vos applications > icône Web `</>`** > surnom `maison` (ne coche pas Firebase Hosting) > **Enregistrer**.
@@ -117,10 +127,28 @@ Commit, push : GitHub Pages met le site à jour en une ou deux minutes.
 ### 10. Connecter chaque appareil
 Sur chaque appareil : ouvrir la page de la maison > en bas, **🔐 Connexion de cet appareil** > e-mail + mot de passe du compte.
 
-- Sur iPhone/iPad, mets la page de l'enfant en **icône d'écran d'accueil** (Partager > Sur l'écran d'accueil) et fais la connexion **depuis cette icône** (bandeau jaune « Appareil pas connecté » > Connecter ; sur la tablette, pastille rouge « 🔒 Connecter la tablette » en haut). L'icône a son propre stockage, séparé de Safari, et elle échappe au ménage automatique de Safari : dans un simple onglet Safari, une page pas ouverte pendant plus d'une semaine perd sa connexion, et il faut la refaire.
+- **Tablette Android** (et téléphones Android) : ouvre la page dans Chrome et connecte-toi (pastille rouge « 🔒 Connecter la tablette » en haut). Pour avoir une icône : menu ⋮ > Ajouter à l'écran d'accueil (vérifie sur la tablette ce que ton Chrome propose : le site n'a pas de manifeste, donc c'est un simple raccourci). En principe la connexion faite dans Chrome vaut aussi pour l'icône, puisque c'est le même navigateur ; si l'icône affiche « pas connecté », reconnecte depuis l'icône.
+- **iPhone/iPad** : mets la page de l'enfant en **icône d'écran d'accueil** (Partager > Sur l'écran d'accueil) et fais la connexion **depuis cette icône** (bandeau jaune « Appareil pas connecté » > Connecter). L'icône a son propre stockage, séparé de Safari, et elle échappe au ménage automatique de Safari : dans un simple onglet Safari, une page pas ouverte pendant plus d'une semaine perd sa connexion, et il faut la refaire.
 - Si le navigateur propose d'enregistrer le mot de passe : **Jamais**, surtout sur la tablette et les téléphones des enfants.
 - Tablette et ton téléphone : compte `famille`. Ton téléphone ouvre ensuite `tablet.html` : tu y vois les trois enfants, et l'heure de chaque coche.
 - Les coches faites sur un appareil avant sa connexion sont envoyées à la base au moment où il se connecte.
+
+## La maison : lave-vaisselle, sèche-linge, étendage
+
+Sur la page de la tablette (et sur ton téléphone, connecté en compte `famille`), trois tuiles apparaissent au-dessus des cartes des enfants.
+
+| Tuile | Les parents appuient | Les enfants voient | Quand ça disparaît |
+|---|---|---|---|
+| 🍽️ Lave-vaisselle | **Lancé** | « Vider le lave-vaisselle » (ne bloque l'écran que s'il a été lancé un jour précédent, hors mercredi et week-end) | un enfant appuie sur la tâche (ou toi sur **✓ Vidé**) : elle disparaît chez tous |
+| 🧺 Sèche-linge | **Lancé** | « Sortir les serviettes du sèche-linge », puis « Plier les serviettes et les torchons, et les ranger » (facultatifs, ne comptent pas pour l'écran) | chaque étape est validée par le premier enfant qui la fait (ou par toi : **✓ Sorties**, **✓ Rangées**) |
+| 👕 Étendage | **Linge étendu** | « Récupérer mon linge sec sur l'étendage et le ranger », pour chaque enfant (ne bloque pas l'écran) | chaque enfant la coche pour lui ; la tuile montre qui a fini |
+
+- **↺ Annuler** corrige un appui par erreur ; **✓ Vidé / Sorties / Rangées** valide l'étape à la place des enfants.
+- La durée d'un cycle n'est pas connue : les tâches apparaissent dès l'appui sur « Lancé », avec l'heure. Les enfants attendent que la machine soit arrêtée.
+- Si tu oublies d'appuyer sur « Lancé », les enfants ne voient rien : c'est le bouton qui déclenche la tâche (elle remplace l'ancienne tâche fixe « Vider le lave-vaisselle »).
+- Tant que l'appareil n'est pas connecté, ou que les nouvelles règles ne sont pas publiées, les pages gardent l'ancienne tâche fixe.
+- Les tâches de la maison ne comptent pas dans la barre de progression des enfants.
+- Un enfant qui utilise la tablette (connectée en `famille`) peut aussi appuyer sur les boutons, y compris « Annuler » : c'est à surveiller.
 
 ## Au quotidien
 
@@ -140,7 +168,7 @@ Avec un compte `famille` partagé, l'étape 1 coupe aussi la tablette (et ton t�
 ## Gratuit, et ça le reste
 
 - Le projet reste sur le plan **Spark** (gratuit) tant qu'aucun compte de facturation n'y est rattaché. Sans moyen de paiement, Google ne peut rien facturer : si une limite est dépassée, le service s'arrête jusqu'au mois suivant, c'est tout.
-- Limites Spark : 1 Go stocké, 10 Go téléchargés par mois, 100 connexions ouvertes en même temps. La maison en utilise une infime partie : quelques dizaines de Ko par jour, et une ou deux connexions par appareil allumé.
+- Limites Spark : 1 Go stocké, 10 Go téléchargés par mois, 100 connexions ouvertes en même temps. La maison en utilise une infime partie : quelques dizaines de Ko par jour, et deux à trois connexions ouvertes par appareil allumé (le jour, le week-end si besoin, et la maison).
 - À ne pas activer : Cloud Storage, Cloud Functions, App Hosting, passage au plan Blaze. Rien de tout ça n'est utile ici.
 - Seul risque théorique : quelqu'un qui bombarderait l'adresse de la base pourrait épuiser le quota du mois (même les requêtes refusées comptent). Conséquence : synchro coupée jusqu'au mois suivant, les coches restent sur les appareils. Jamais de facture.
 
