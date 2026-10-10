@@ -132,10 +132,10 @@
     var d = dishwasher(), y = dryer(), r = rack(), out = [], i, done = [];
 
     var dtext = "Rien en cours";
-    if(d.active) dtext = "Lancé " + when(d.launched) + " · à vider";
-    else if(d.launched) dtext = "Vidé · lancé " + when(d.launched);
+    if(d.active) dtext = "🟠 En marche · lancé " + when(d.launched) + " · à vider ensuite";
+    else if(d.launched) dtext = "✅ Rien à vider · dernier lancement " + when(d.launched);
     out.push({key: "dishwasher", emoji: "🍽️", name: "Lave-vaisselle", busy: d.active, canGo: !d.active,
-      text: dtext, label: "Lancé",
+      text: dtext, label: "▶ Lancer",
       go: function(){ S.setHouse("dishwasher", "launched", freshStamp([d.launched, d.emptied])); },
       fin: d.active ? {label: "✓ Vidé", fn: function(){ S.setHouse("dishwasher", "emptied", d.launched); }} : null,
       // « Annuler » = clore cette étape (la base refuse si un lancement plus récent a eu lieu entre-temps)
@@ -143,16 +143,16 @@
 
     var ytext = "Rien en cours", yfin = null;
     if(y.step1){
-      ytext = "Lancé " + when(y.launched) + " · serviettes à sortir";
+      ytext = "🟠 En marche · lancé " + when(y.launched) + " · serviettes à sortir ensuite";
       yfin = {label: "✓ Sorties", fn: function(){ S.setHouse("dryer", "out", y.launched); }};
     } else if(y.step2){
-      ytext = "Serviettes sorties · à plier et ranger";
+      ytext = "🟠 Serviettes sorties · à plier et ranger";
       yfin = {label: "✓ Rangées", fn: function(){ S.setHouse("dryer", "folded", y.out); }};
     } else if(y.launched){
-      ytext = "Tout rangé · lancé " + when(y.launched);
+      ytext = "✅ Tout rangé · dernier lancement " + when(y.launched);
     }
     out.push({key: "dryer", emoji: "🧺", name: "Sèche-linge", busy: y.step1 || y.step2, canGo: !y.step1,
-      text: ytext, label: "Lancé",
+      text: ytext, label: "▶ Lancer",
       go: function(){ S.setHouse("dryer", "launched", freshStamp([y.launched, y.out, y.folded])); },
       fin: yfin,
       undo: y.step1 ? function(){ S.setHouse("dryer", "out", y.launched); S.setHouse("dryer", "folded", y.launched); } : null});
@@ -163,12 +163,12 @@
       if(r.hung && !r.kids[KIDS[i]].todo) done.push(KIDS[i]);
     }
     if(r.hung){
-      if(r.left.length === 0) rtext = "Étendu " + when(r.hung) + " · tout le monde a récupéré";
-      else rtext = "Étendu " + when(r.hung) + " · à récupérer : " + nameList(r.left) + (done.length ? " · fait : " + nameList(done) : "");
+      if(r.left.length === 0) rtext = "✅ Tout le monde a récupéré son linge (étendu " + when(r.hung) + ")";
+      else rtext = "🟠 Étendu " + when(r.hung) + " · à récupérer : " + nameList(r.left) + (done.length ? " · fait : " + nameList(done) : "");
     }
     // Tant que des enfants n'ont pas récupéré leur linge, pas de nouveau « Linge étendu » : leur tâche couvre déjà le linge en place
     out.push({key: "rack", emoji: "👕", name: "Étendage", busy: r.left.length > 0, canGo: r.left.length === 0,
-      text: rtext, label: "Linge étendu",
+      text: rtext, label: "▶ J'ai étendu du linge",
       go: function(){ S.setHouse("rack", "hung", freshStamp(used)); },
       fin: null,
       undo: r.left.length > 0 ? function(){
