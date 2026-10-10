@@ -170,8 +170,9 @@
 
     // APPRENDRE ET LIRE (tous les jours) — le week-end, révisions + dictée avec Papa
     if(isWeekend){
-      t.push({block:"apprendre", emoji:"✍️", label:cfg.poetry?"Réviser mes leçons et/ou ma poésie + dictée avec Papa":"Réviser mes leçons + dictée avec Papa",
+      t.push({block:"apprendre", emoji:"📖", label:cfg.poetry?"Réviser mes leçons et/ou ma poésie":"Réviser mes leçons",
         note:cfg.poetry?"Poésie : je relis ce que je sais + j'apprends au moins 2 lignes de plus":undefined});
+      t.push({block:"apprendre", emoji:"✍️", label:"Faire ma dictée avec Papa"});
     } else if(cfg.poetry){
       t.push({block:"apprendre", emoji:"📖", label:"Réviser ma poésie (ou, s'il n'y en a pas, une de mes leçons)", note:"Poésie : je relis ce que je sais + j'apprends au moins 2 lignes de plus"});
     }
