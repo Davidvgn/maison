@@ -179,6 +179,17 @@
   var wxCard=document.createElement("div"); wxCard.id="weather"; wxCard.className="weather"; wxCard.style.display="none";
   var hdrEl=document.querySelector("header"); if(hdrEl){ hdrEl.insertAdjacentElement("afterend", wxCard); }
 
+  // Lien vers la liste de courses (un enfant peut y ajouter un article, sans toucher à la liste finale)
+  (function(){
+    var box=document.getElementById("rules");
+    if(!box || !box.parentNode) return;
+    var a=document.createElement("a");
+    a.className="shop-link"; a.href="liste.html?kid="+CHILD;
+    a.textContent="🛒 Ajouter à la liste de courses";
+    a.onclick=function(e){ if(e&&e.preventDefault) e.preventDefault(); location.href=C.linkTo("liste.html?kid="+CHILD); };
+    box.parentNode.insertBefore(a, box);
+  })();
+
   renderRules();
   C.watch([CHILD], today, onRemote);   // coches faites sur un autre appareil (tablette, téléphone)
   applyDay();

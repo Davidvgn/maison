@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#34415c" />
+<meta name="robots" content="noindex" />
+<title>Ajouter à la liste de courses</title>
+<link rel="stylesheet" href="shop.css" />
+</head>
+<body>
+<div class="sh-head" id="head">
+  <button class="sh-back" id="back" type="button">← Retour</button>
+  <h1>🛒 La liste de courses</h1>
+</div>
+
+<div id="gate"><div class="msg">Chargement… Si rien ne s'affiche, recharge la page.</div></div>
+<div id="app" style="display:none">
+  <div id="status" class="msg"></div>
+  <div id="parentlink"></div>
+  <p class="sh-sub">Il n'y en a plus ? Cherche l'article, mets la quantité et appuie sur « Ajouter ». Tu ne peux pas retirer ni changer ce qui est déjà demandé.</p>
+
+  <div class="box">
+    <input type="search" id="search" placeholder="Chercher un article (lait, yaourts…)" autocomplete="off" autocapitalize="off" />
+  </div>
+
+  <div id="catalog"></div>
+
+  <div class="box">
+    <h2>✏️ Il manque autre chose ?</h2>
+    <div class="line">
+      <input type="text" id="other" placeholder="Écris ce qu'il faut acheter" autocomplete="off" maxlength="40" />
+      <button class="btn" id="send" type="button">Proposer</button>
+    </div>
+    <div id="sent"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var q=["children.js","firebase-config.js","sync.js","shop.js","liste.js"], t=Date.now();
+  function next(){
+    if(!q.length) return;
+    var s=document.createElement("script"); s.src=q.shift()+(location.protocol==="file:"?"":"?t="+t);
+    s.onload=next; s.onerror=function(){ window.LOAD_FAILED=true; next(); }; document.body.appendChild(s);
+  }
+  next();
+})();
+</script>
+</body>
+</html>

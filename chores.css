@@ -108,3 +108,7 @@ footer{text-align:center;color:#aab6c8;font-size:.75rem;margin-top:26px;}
 .sync-banner.info{background:#eef2f8;color:#4a5568;border:2px solid #d6deea;}
 .sync-banner span{flex:1;}
 .sync-banner a{flex:none;margin-left:10px;background:#fff;color:#2f6fd0;border:1px solid #cfe2fb;border-radius:10px;padding:5px 10px;font-weight:800;text-decoration:none;}
+
+/* Lien vers la liste de courses (page de l'enfant) */
+.shop-link{display:block;text-align:center;text-decoration:none;font-weight:800;color:#2f6fd0;background:#eef6ff;
+  border:2px solid #cfe2fb;border-radius:var(--radius);padding:14px;margin:6px 0 14px;}

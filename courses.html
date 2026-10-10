@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#34415c" />
+<meta name="robots" content="noindex" />
+<title>Liste de courses</title>
+<link rel="stylesheet" href="shop.css" />
+</head>
+<body>
+<div class="sh-head">
+  <button class="sh-back" id="back" type="button">← Retour</button>
+  <h1>🛒 Liste de courses</h1>
+</div>
+
+<div id="gate"><div class="msg">Chargement… Si rien ne s'affiche, recharge la page.</div></div>
+<div id="app" style="display:none">
+  <div id="status" class="msg"></div>
+  <div id="inbox"></div>
+
+  <div class="box" id="tobuy"></div>
+
+  <div class="box">
+    <h2>➕ Ajouter un article</h2>
+    <input type="search" id="search" placeholder="Nom de l'article (ex. lait, yaourts…)" autocomplete="off" autocapitalize="off" />
+    <div id="results"></div>
+  </div>
+
+  <details class="box" id="manage">
+    <summary>🗂️ Tous les articles (renommer, ranger, supprimer)</summary>
+    <div id="manageBody"></div>
+  </details>
+</div>
+
+<div class="sticky" id="finishBar"><div class="in"><button class="btn ok" id="finish" type="button"></button></div></div>
+
+<script>
+(function(){
+  var q=["children.js","firebase-config.js","sync.js","shop.js","courses.js"], t=Date.now();
+  function next(){
+    if(!q.length) return;
+    var s=document.createElement("script"); s.src=q.shift()+(location.protocol==="file:"?"":"?t="+t);
+    s.onload=next; s.onerror=function(){ window.LOAD_FAILED=true; next(); }; document.body.appendChild(s);
+  }
+  next();
+})();
+</script>
+</body>
+</html>
