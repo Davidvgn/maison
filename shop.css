@@ -42,6 +42,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .row.cart .chk{background:var(--ok);border-color:var(--ok);color:#fff;}
 .nm{flex:1 1 130px;font-size:1.05rem;font-weight:700;line-height:1.2;min-width:0;word-wrap:break-word;padding:4px 0;}
 .nm small{display:block;font-size:.75rem;color:var(--muted);font-weight:600;margin-top:2px;}
+.nm small.note{font-size:.85rem;color:var(--ink);font-weight:800;}
+.nm small.addnote{color:var(--accent);font-weight:700;opacity:.85;}
+.rowwrap{margin-bottom:7px;}
+.rowwrap > .row{margin-bottom:0;}
+.rowwrap > .inline{margin:4px 0 0;}
 .qty{display:flex;align-items:center;flex:none;margin-left:8px;}
 .ctl{display:flex;align-items:center;flex:none;margin-left:auto;}
 .qty b{min-width:30px;text-align:center;font-size:1.05rem;}

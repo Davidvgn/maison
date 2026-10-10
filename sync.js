@@ -324,7 +324,7 @@
   // il effacerait ce que les autres ont ajouté entre-temps.
   function staleTrigger(op){
     if(!op || !op.t || Date.now() - op.t <= 600000) return false;
-    return /^house\/[a-z]+\/(launched|hung)$/.test(op.p) || (op.v == null && /^shop\/(need|inbox)$/.test(op.p));
+    return /^house\/[a-z]+\/(launched|hung)$/.test(op.p) || (op.v == null && /^shop\/(need|inbox|note)$/.test(op.p));
   }
   function flush(){
     if(inflight || !auth) return;
