@@ -74,7 +74,7 @@
   }
 
   function updateProgress(){
-    var req=tasks.filter(function(t){return !t.optional && !t.house;});   // les tâches facultatives et celles de la maison ne comptent pas
+    var req=tasks.filter(function(t){return !t.optional && (!t.house || t.gate);});   // facultatives : non ; maison : seulement si elle bloque l'écran
     var total=req.length, done=req.filter(isDone).length;
     var pct=total?Math.round(done/total*100):0;
     document.getElementById("progressText").textContent=done+" / "+total+" fait";

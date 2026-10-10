@@ -183,7 +183,7 @@
     function renderChild(k, now, tomorrow, h){
       colsEl.className="one";
       var i=info(k,now,tomorrow,h), cfg=i.cfg, done=i.done;
-      var shown0=i.tasks.filter(function(t){ return (t.block!=="soir" || h>=19) && !t.optional && !t.house; });
+      var shown0=i.tasks.filter(function(t){ return (t.block!=="soir" || h>=19) && !t.optional && (!t.house || t.gate); });
       var col=el("div","col");
       var head=el("div","col-head","<span class='col-name'>"+cfg.name+"</span><span class='col-day'>"+i.ds.val+" · "+shown0.filter(done).length+"/"+shown0.length+"</span>");
       head.style.background=cfg.gradient;
@@ -192,7 +192,7 @@
 
       var list=el("div","list");
       var shown=i.tasks.filter(function(t){ return t.block!=="soir" || h>=19; });
-      var todo=shown.filter(function(t){return !done(t) && !t.optional && !t.house;});
+      var todo=shown.filter(function(t){return !done(t) && !t.optional && (!t.house || t.gate);});
 
       function addTask(t){
         var d=done(t);
@@ -200,7 +200,18 @@
         var v=d?String(C.doneValue(k,t,now)||""):"", hhmm=/ (\d\d:\d\d)$/.exec(v);   // heure de la coche, pour le parent
         var row=el("div","task"+(d?" done":"")+(urgent?" urgent":"")+(t.optional?" optional":""),
           "<div class='emoji'>"+t.emoji+"</div><div class='label'>"+t.label+(t.optional?"<span class='opt'>Facultatif</span>":"")+(t.note?"<span class='note'>"+t.note+"</span>":"")+(t.href?"<span class='go'>"+(t.linkLabel||"▶ Voir")+"</span>":"")+"</div>"+(hhmm?"<div class='when'>"+hhmm[1]+"</div>":"")+"<div class='check'>✓</div>");
-        function toggle(){ C.setDone(k,t,now,!d); lastTouch=Date.now(); render(); }
+        function toggle(){
+          lastTouch=Date.now();
+          if(t.house){   // la ligne reste un instant, cochée ; les doubles appuis sont ignorés
+            if(row.className.indexOf(" done")!==-1) return;
+            row.className+=" done";
+            C.setDone(k,t,now,true);
+            lastKey=viewKey(C.now());
+            setTimeout(render,700);
+            return;
+          }
+          C.setDone(k,t,now,!d); render();
+        }
         if(t.href){
           row.onclick=function(){ location.href=C.linkTo(t.href, "tablet.html?kid="+k+C.dateParams().replace(/^&/,"&")); };
           row.querySelector(".check").onclick=function(e){ e.stopPropagation(); toggle(); };
@@ -238,11 +249,21 @@
     }
 
     // La maison : tuiles des parents, sur l'accueil seulement (rien si l'appareil n'est pas connecté en « famille »)
+    var houseKey="", pressedUntil={};
+    function press(key, fn){   // un appui est ignoré s'il suit de trop près un autre sur la même tuile
+      var n=Date.now();
+      if(pressedUntil[key] && n<pressedUntil[key]) return;
+      pressedUntil[key]=n+1500;
+      lastTouch=n; fn();
+    }
     function renderHouse(){
       var box=document.getElementById("house");
-      box.innerHTML="";
       var H=window.House;
       var on=!current && H && H.isParent() && H.known() && !C.qs("date");
+      var key=on?("1|"+H.sig()):"0";
+      if(key===houseKey) return;   // rien n'a changé : on ne touche pas aux boutons (pas de toucher perdu)
+      houseKey=key;
+      box.innerHTML="";
       box.className=on?"show":"";
       if(!on) return;
       var wrap=el("div","tiles");
@@ -253,17 +274,17 @@
         var row=el("div","tb");
         if(t.canGo){
           var go=el("button","go"); go.type="button"; go.textContent=t.label;
-          go.onclick=function(){ lastTouch=Date.now(); t.go(); };
+          go.onclick=function(){ press(t.key, t.go); };
           row.appendChild(go);
         }
         if(t.fin){
           var fi=el("button","fin"); fi.type="button"; fi.textContent=t.fin.label;
-          fi.onclick=function(){ lastTouch=Date.now(); t.fin.fn(); };
+          fi.onclick=function(){ press(t.key, t.fin.fn); };
           row.appendChild(fi);
         }
         if(t.undo){
           var un=el("button","undo"); un.type="button"; un.textContent="↺ Annuler";
-          un.onclick=function(){ lastTouch=Date.now(); t.undo(); };
+          un.onclick=function(){ press(t.key, t.undo); };
           row.appendChild(un);
         }
         tile.appendChild(row);

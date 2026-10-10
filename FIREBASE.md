@@ -143,7 +143,9 @@ Sur la page de la tablette (et sur ton téléphone, connecté en compte `famille
 | 🧺 Sèche-linge | **Lancé** | « Sortir les serviettes du sèche-linge », puis « Plier les serviettes et les torchons, et les ranger » (facultatifs, ne comptent pas pour l'écran) | chaque étape est validée par le premier enfant qui la fait (ou par toi : **✓ Sorties**, **✓ Rangées**) |
 | 👕 Étendage | **Linge étendu** | « Récupérer mon linge sec sur l'étendage et le ranger », pour chaque enfant (ne bloque pas l'écran) | chaque enfant la coche pour lui ; la tuile montre qui a fini |
 
-- **↺ Annuler** corrige un appui par erreur ; **✓ Vidé / Sorties / Rangées** valide l'étape à la place des enfants.
+- **↺ Annuler** corrige un appui par erreur (il clôt l'étape en cours : la base le refuse si quelqu'un a relancé entre-temps) ; **✓ Vidé / Sorties / Rangées** valide l'étape à la place des enfants.
+- Un deuxième appui sur le même bouton moins de 2 secondes après le premier est ignoré. « Linge étendu » est masqué tant qu'un enfant n'a pas récupéré le sien.
+- Un « Lancé » ou « Linge étendu » resté plus de 10 minutes en attente (appareil sans réseau) n'est pas rejoué : il rouvrirait une étape déjà faite.
 - La durée d'un cycle n'est pas connue : les tâches apparaissent dès l'appui sur « Lancé », avec l'heure. Les enfants attendent que la machine soit arrêtée.
 - Si tu oublies d'appuyer sur « Lancé », les enfants ne voient rien : c'est le bouton qui déclenche la tâche (elle remplace l'ancienne tâche fixe « Vider le lave-vaisselle »).
 - Tant que l'appareil n'est pas connecté, ou que les nouvelles règles ne sont pas publiées, les pages gardent l'ancienne tâche fixe.

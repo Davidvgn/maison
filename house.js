@@ -138,7 +138,8 @@
       text: dtext, label: "Lancé",
       go: function(){ S.setHouse("dishwasher", "launched", freshStamp([d.launched, d.emptied])); },
       fin: d.active ? {label: "✓ Vidé", fn: function(){ S.setHouse("dishwasher", "emptied", d.launched); }} : null,
-      undo: d.active ? function(){ S.setHouse("dishwasher", "launched", null); } : null});
+      // « Annuler » = clore cette étape (la base refuse si un lancement plus récent a eu lieu entre-temps)
+      undo: d.active ? function(){ S.setHouse("dishwasher", "emptied", d.launched); } : null});
 
     var ytext = "Rien en cours", yfin = null;
     if(y.step1){
@@ -154,7 +155,7 @@
       text: ytext, label: "Lancé",
       go: function(){ S.setHouse("dryer", "launched", freshStamp([y.launched, y.out, y.folded])); },
       fin: yfin,
-      undo: y.step1 ? function(){ S.setHouse("dryer", "launched", null); } : null});
+      undo: y.step1 ? function(){ S.setHouse("dryer", "out", y.launched); S.setHouse("dryer", "folded", y.launched); } : null});
 
     var rtext = "Rien à l'étendage", used = [r.hung];
     for(i = 0; i < KIDS.length; i++){
@@ -165,11 +166,14 @@
       if(r.left.length === 0) rtext = "Étendu " + when(r.hung) + " · tout le monde a récupéré";
       else rtext = "Étendu " + when(r.hung) + " · à récupérer : " + nameList(r.left) + (done.length ? " · fait : " + nameList(done) : "");
     }
-    out.push({key: "rack", emoji: "👕", name: "Étendage", busy: r.left.length > 0, canGo: true,
+    // Tant que des enfants n'ont pas récupéré leur linge, pas de nouveau « Linge étendu » : leur tâche couvre déjà le linge en place
+    out.push({key: "rack", emoji: "👕", name: "Étendage", busy: r.left.length > 0, canGo: r.left.length === 0,
       text: rtext, label: "Linge étendu",
       go: function(){ S.setHouse("rack", "hung", freshStamp(used)); },
       fin: null,
-      undo: r.left.length > 0 ? function(){ S.setHouse("rack", "hung", null); } : null});
+      undo: r.left.length > 0 ? function(){
+        for(var k = 0; k < r.left.length; k++) S.setHouse("rack", r.left[k], r.hung);
+      } : null});
     return out;
   }
 
