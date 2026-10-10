@@ -79,8 +79,8 @@
   function hid(m, f, ref){ return "maison_" + m + "_" + f + "_" + String(ref || "").replace(/\D/g, ""); }
 
   // ---- Tâches affichées aux enfants (bloc « Pour la maison ») ----
-  // Aucune ne compte dans la barre de progression (house:true) ; seul le lave-vaisselle peut bloquer l'écran,
-  // et seulement s'il a été lancé un jour précédent (la durée d'un cycle est inconnue).
+  // Aucune ne compte dans la barre de progression (house:true), sauf le lave-vaisselle quand il bloque l'écran ;
+  // il ne bloque que s'il a été lancé un jour précédent (la durée d'un cycle est inconnue).
   function tasks(child, restDay){
     var out = [], d = dishwasher(), y = dryer(), r = rack(), me = r.kids[child];
     if(d.active){
