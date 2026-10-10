@@ -17,23 +17,35 @@
 
 <div id="gate"><div class="msg">Chargement… Si rien ne s'affiche, recharge la page.</div></div>
 <div id="app" style="display:none">
-  <div id="status" class="msg"></div>
-  <div id="inbox"></div>
-
-  <div class="box" id="tobuy"></div>
-
-  <div class="box">
-    <h2>➕ Ajouter un article</h2>
-    <input type="search" id="search" placeholder="Nom de l'article (ex. lait, yaourts…)" autocomplete="off" autocapitalize="off" />
-    <div id="results"></div>
+  <div class="topbar">
+    <div id="status" class="msg"></div>
+    <div class="modes" id="modes">
+      <button type="button" id="modePrep">📝 Préparer</button>
+      <button type="button" id="modeShop">🛒 En magasin</button>
+    </div>
   </div>
 
-  <details class="box" id="manage">
-    <summary>🗂️ Tous les articles (renommer, ranger, supprimer)</summary>
-    <div id="manageBody"></div>
-  </details>
+  <div id="prep">
+    <div id="inbox"></div>
+
+    <div class="box" id="tobuy"></div>
+
+    <div class="box">
+      <h2>➕ Ajouter un article</h2>
+      <input type="search" id="search" placeholder="Nom de l'article (ex. lait, yaourts…)" autocomplete="off" autocapitalize="off" />
+      <div id="results"></div>
+    </div>
+
+    <details class="box" id="manage">
+      <summary>🗂️ Tous les articles (renommer, ranger, supprimer)</summary>
+      <div id="manageBody"></div>
+    </details>
+  </div>
+
+  <div id="shopview" style="display:none"></div>
 </div>
 
+<div class="toast" id="toast"></div>
 <div class="sticky" id="finishBar"><div class="in"><button class="btn ok" id="finish" type="button"></button></div></div>
 
 <script>

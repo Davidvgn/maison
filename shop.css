@@ -6,7 +6,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  background:var(--bg);color:var(--ink);max-width:760px;margin:0 auto;padding:12px 12px 90px;}
+  background:var(--bg);color:var(--ink);max-width:760px;margin:0 auto;padding:12px 12px 150px;}
 
 .sh-head{display:flex;align-items:center;color:#fff;border-radius:18px;padding:12px 14px;margin-bottom:12px;
   background:linear-gradient(135deg,#34415c,#566380);}
@@ -23,8 +23,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .msg{border-radius:14px;padding:12px;margin:10px 0;font-weight:700;line-height:1.35;background:var(--warn-bg);color:#7a5600;border:2px solid #ffe39c;}
 .msg a{color:#2f6fd0;}
 .empty{color:var(--muted);text-align:center;padding:10px 4px;font-weight:600;}
-#status{display:none;margin:0 0 12px;font-size:.92rem;position:sticky;top:0;z-index:5;}
+#status{display:none;margin:0 0 8px;font-size:.92rem;}
 #status.show{display:block;}
+.topbar{position:sticky;top:0;z-index:5;background:var(--bg);padding:4px 0 2px;margin-bottom:8px;}
 .parentlink{margin:0 4px 10px;font-size:.95rem;font-weight:700;}
 .parentlink a{color:#2f6fd0;}
 
@@ -41,6 +42,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .nm{flex:1 1 130px;font-size:1.05rem;font-weight:700;line-height:1.2;min-width:0;word-wrap:break-word;padding:4px 0;}
 .nm small{display:block;font-size:.75rem;color:var(--muted);font-weight:600;margin-top:2px;}
 .qty{display:flex;align-items:center;flex:none;margin-left:8px;}
+.ctl{display:flex;align-items:center;flex:none;margin-left:auto;}
 .qty b{min-width:30px;text-align:center;font-size:1.05rem;}
 .btn{border:none;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;font-size:1rem;
   padding:10px 14px;min-height:44px;cursor:pointer;margin:2px;}
@@ -70,3 +72,25 @@ input:focus,select:focus{outline:none;border-color:var(--accent);}
 .sticky .btn{width:100%;}
 details.box > summary{font-weight:800;font-size:1.05rem;cursor:pointer;}
 .inline{background:#f8fafd;border:2px dashed #cfd9e8;border-radius:14px;padding:10px;margin:6px 0 10px;}
+
+/* Choix de la vue : Préparer / En magasin */
+.modes{display:flex;gap:8px;margin:0 0 6px;}
+.modes button{flex:1;min-height:48px;border:2px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);
+  font-size:1rem;font-weight:800;cursor:pointer;padding:6px 8px;}
+.modes button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+/* Vue « En magasin » : grosses lignes, un appui = pris */
+.row.take{min-height:60px;cursor:pointer;padding:10px 12px;}
+.row.take:active{background:var(--ok-bg);}
+.row.take .nm{font-size:1.2rem;}
+.row.take.cart{opacity:.7;}
+.big{flex:none;margin-left:10px;background:#eef2f8;color:var(--ink);border-radius:12px;padding:6px 12px;font-size:1.15rem;font-weight:800;}
+.sh-sub{margin:0 4px 8px;}
+
+/* Annulation de la dernière prise */
+.toast{position:fixed;left:12px;right:12px;bottom:80px;max-width:736px;margin:0 auto;display:none;align-items:center;
+  background:#23304a;color:#fff;border-radius:14px;padding:8px 8px 8px 14px;font-weight:700;z-index:6;pointer-events:none;}
+.toast .btn{pointer-events:auto;}
+.toast.show{display:flex;}
+.toast span{flex:1;min-width:0;word-wrap:break-word;}
+.toast .btn{flex:none;}

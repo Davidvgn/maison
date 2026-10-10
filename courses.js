@@ -1,7 +1,11 @@
 /* ================================================================
    Page des parents : la liste de courses (courses.html).
-   Réservée au compte « famille » : liste à acheter par rayon, panier,
-   propositions des enfants à classer, ajout et gestion des articles.
+   Réservée au compte « famille ». Deux vues sur la même liste :
+   - « Préparer » : tout (ajouter, quantités, retirer, propositions des
+     enfants à classer, gestion des articles) ; les lignes prises y restent,
+     en grisé ;
+   - « En magasin » : ce qui reste à prendre, rien d'autre ; un appui sur une
+     ligne la marque prise et elle disparaît (annulable).
    JavaScript ancien (ES5).
    ================================================================ */
 (function(){
@@ -59,7 +63,13 @@
 
   // ---- État de l'écran ----
   var ui = {filing: null, form: {pick: "", name: "", section: "autre"}, editing: null, edit: {name: "", section: "autre"},
-            creating: false, create: {section: "autre"}, confirm: null};
+            creating: false, create: {section: "autre"}, confirm: null, mode: "prep", showTaken: false};
+  // La vue choisie est gardée sur cet appareil (la tablette en « Préparer », le téléphone en « En magasin »)
+  var MODE_K = "maison:courses:mode";
+  try{ ui.mode = localStorage.getItem(MODE_K) === "shop" ? "shop" : "prep"; }catch(e){}
+  var qm = qs("mode");
+  if(qm === "magasin" || qm === "shop") ui.mode = "shop";
+  else if(qm === "preparer" || qm === "prep") ui.mode = "prep";
   var lastSig = "", pendingRender = false, startedAt = Date.now(), confirmTimer = null, armedAt = 0;
 
   // Action à deux appuis (retirer, supprimer, vider) : le premier arme, le second (après 0,7 s) exécute ; elle expire après 5 s
@@ -89,13 +99,55 @@
     flashTimer = setTimeout(function(){ flashText = ""; flashTimer = null; renderStatus(); }, 4000);
     renderStatus();
   }
-  // Coche : un double appui ne doit pas cocher aussi la ligne qui vient prendre la place
-  var tickAt = 0;
-  function tick(id){
+  // Prise d'une ligne en magasin : elle disparaît, la suivante prend sa place sous le doigt.
+  // Un double appui ne doit donc pas prendre aussi la ligne suivante : on ignore tout appui trop proche.
+  var takeAt = 0, undoTimer = null, undoId = null;
+  function hideUndo(){
+    if(undoTimer){ clearTimeout(undoTimer); undoTimer = null; }
+    undoId = null;
+    var t = $("toast"); t.className = "toast"; t.innerHTML = "";
+  }
+  function showUndo(id, name){
+    hideUndo();
+    var t = $("toast");
+    undoId = id;
+    t.appendChild(el("span", null, "« " + name + " » pris"));
+    t.appendChild(btn("↩ Annuler", "sm ghost", function(){
+      if(Date.now() - takeAt < 500) return;   // même antirebond qu'une prise : le bandeau arrive sous le doigt qui vient d'appuyer
+      hideUndo(); H.setCart(id, false); render();
+    }));
+    t.className = "toast show";
+    undoTimer = setTimeout(hideUndo, 6000);
+  }
+  function take(r){
     var n = Date.now();
-    if(n - tickAt < 450) return;
-    tickAt = n;
-    H.toggleCart(id); render();
+    if(n - takeAt < 500) return;
+    takeAt = n;
+    if(H.setCart(r.id, true)) showUndo(r.id, r.name);
+    render();
+  }
+  function untake(id){
+    var n = Date.now();
+    if(n - takeAt < 500) return;
+    takeAt = n;
+    H.setCart(id, false);
+    render();
+  }
+  function setMode(m){
+    if(ui.mode === m) return;
+    ui.mode = m;
+    try{ localStorage.setItem(MODE_K, m); }catch(e){}
+    ui.confirm = null; hideUndo();
+    try{ if(document.activeElement && document.activeElement.blur) document.activeElement.blur(); }catch(e1){}   // un champ caché ne doit pas geler l'écran
+    render();
+    try{ window.scrollTo(0, 0); }catch(e2){}
+  }
+
+  // « + » : une unité de plus. Sur une ligne déjà prise, elle revient avec seulement ce qui manque : on le dit.
+  function more(id, name){
+    var all = H.needs(), was = all.hasOwnProperty(id) && all[id].cart ? all[id].q : 0;
+    if(!H.addOne(id)) return;
+    if(was) flash("« " + name + " » : " + was + " déjà pris, il en reste 1 à prendre.");
   }
 
   function sectionSelect(value, onchange){
@@ -177,66 +229,112 @@
     return f;
   }
 
-  // ---- À acheter ----
-  function renderToBuy(){
-    var box = $("tobuy"), n = H.needs(), its = H.items(), byId = {}, i, k;
-    for(i = 0; i < its.length; i++) byId[its[i].id] = its[i];
-    var list = [], cart = 0;
-    for(k in n){
-      if(!n.hasOwnProperty(k)) continue;
-      var it = byId.hasOwnProperty(k) ? byId[k] : {id: k, name: k, section: "autre"};
-      list.push({id: k, name: it.name, section: it.section, need: n[k]});
-      if(n[k].cart) cart++;
-    }
+  // ---- Vue « Préparer » : toute la liste, rangée par rayon ----
+  function renderToBuy(lines){
+    var box = $("tobuy"), taken = 0, i;
+    for(i = 0; i < lines.length; i++){ if(lines[i].cart) taken++; }
     box.innerHTML = "";
-    var h = el("h2", null, "🛒 À acheter");
-    h.appendChild(el("span", "n", String(list.length)));
+    var h = el("h2", null, "📝 La liste à acheter");
+    h.appendChild(el("span", "n", String(lines.length)));
     box.appendChild(h);
-    if(!list.length){
+    if(taken > 0) box.appendChild(el("div", "sh-sub", taken + " déjà pris (grisé). Ils se prennent dans la vue « En magasin »."));
+    if(!lines.length){
       box.appendChild(el("div", "empty", "Rien à acheter pour l'instant. Ajoute un article ci-dessous."));
     }
     H.SECTIONS.forEach(function(sec){
-      var rows = list.filter(function(r){ return H.section(r.section).key === sec.key; });
+      var rows = lines.filter(function(r){ return r.section === sec.key; });
       if(!rows.length) return;
-      rows.sort(function(a, b){
-        if(a.need.cart !== b.need.cart) return a.need.cart ? 1 : -1;
-        var x = H.norm(a.name), y = H.norm(b.name); return x < y ? -1 : (x > y ? 1 : 0);
-      });
+      var open = rows.filter(function(r){ return !r.cart; }), done = rows.filter(function(r){ return r.cart; });
       box.appendChild(el("div", "sec", sec.emoji + " " + sec.name));
-      rows.forEach(function(r){ box.appendChild(needRow(r)); });
+      open.concat(done).forEach(function(r){ box.appendChild(needRow(r)); });
     });
-
-    var bar = $("finishBar"), fin = $("finish");
-    if(cart > 0){
-      bar.className = "sticky show";
-      fin.textContent = ui.confirm === "finish" ? "Appuie encore pour confirmer (" + cart + " retiré" + (cart > 1 ? "s" : "") + ")"
-                                                : "✓ Terminer les courses (" + cart + " dans le panier)";
-      fin.onclick = function(){ twoTap("finish", function(){ H.finishShopping(); }); };
-    } else {
-      bar.className = "sticky";
-    }
   }
   function needRow(r){
-    var row = el("div", "row" + (r.need.cart ? " cart" : ""));
-    var chk = el("button", "chk", "✓"); chk.type = "button";
-    chk.onclick = function(){ tick(r.id); };
-    row.appendChild(chk);
+    var row = el("div", "row" + (r.cart ? " cart" : ""));
     var nm = el("div", "nm", r.name);
-    if(r.need.by !== "famille") nm.appendChild(el("small", null, "demandé par " + who(r.need.by)));
-    nm.onclick = function(){ tick(r.id); };
+    if(r.by !== "famille") nm.appendChild(el("small", null, "demandé par " + who(r.by)));
     row.appendChild(nm);
-    var q = el("div", "qty");
+    if(r.cart) row.appendChild(el("span", "tag done", "✓ pris"));
+    var ctl = el("div", "ctl"), q = el("div", "qty");   // quantité et ✕ restent ensemble quand l'écran est étroit
     var minus = el("button", "step", "−"); minus.type = "button";
     minus.onclick = function(){ H.bump(r.id, -1); render(); };
     var plus = el("button", "step", "+"); plus.type = "button";
-    plus.onclick = function(){ H.bump(r.id, 1); render(); };
-    q.appendChild(minus); q.appendChild(el("b", null, String(r.need.q))); q.appendChild(plus);
-    row.appendChild(q);
+    plus.onclick = function(){ more(r.id, r.name); render(); };
+    q.appendChild(minus); q.appendChild(el("b", null, String(r.q))); q.appendChild(plus);
+    ctl.appendChild(q);
     var armedX = ui.confirm === "rm:" + r.id;
     var x = el("button", "x" + (armedX ? " armed" : ""), armedX ? "Retirer ?" : "✕"); x.type = "button";
     x.onclick = function(){ twoTap("rm:" + r.id, function(){ H.removeNeed(r.id); }); };
-    row.appendChild(x);
+    ctl.appendChild(x);
+    row.appendChild(ctl);
     return row;
+  }
+
+  // ---- Vue « En magasin » : ce qui reste à prendre ----
+  function renderShop(lines){
+    var box = $("shopview"), left = [], taken = [], i;
+    for(i = 0; i < lines.length; i++){ (lines[i].cart ? taken : left).push(lines[i]); }
+    box.innerHTML = "";
+    var b = el("div", "box"), h = el("h2", null, "🛒 À prendre");
+    h.appendChild(el("span", "n", String(left.length)));
+    b.appendChild(h);
+    if(!taken.length) ui.showTaken = false;   // l'ouverture ne doit pas survivre à « Terminer » : la prise suivante doit disparaître
+    if(!lines.length){
+      b.appendChild(el("div", "empty", "La liste est vide. Prépare-la dans la vue « Préparer »."));
+    } else if(!left.length){
+      b.appendChild(el("div", "empty", "🎉 Tout est pris ! Appuie sur « Terminer les courses » pour vider la liste."));
+    } else {
+      b.appendChild(el("div", "sh-sub", "Appuie sur un article quand il est dans le chariot."));
+    }
+    H.SECTIONS.forEach(function(sec){
+      var rows = left.filter(function(r){ return r.section === sec.key; });
+      if(!rows.length) return;
+      b.appendChild(el("div", "sec", sec.emoji + " " + sec.name));
+      rows.forEach(function(r){ b.appendChild(takeRow(r, false)); });
+    });
+    if(taken.length){
+      b.appendChild(btn((ui.showTaken ? "Cacher" : "Voir aussi") + " les articles pris (" + taken.length + ")", "ghost", function(){
+        ui.showTaken = !ui.showTaken; render();
+      }));
+      if(ui.showTaken){
+        b.appendChild(el("div", "sec", "Déjà pris · appuie sur une ligne pour la remettre dans la liste"));
+        taken.forEach(function(r){ b.appendChild(takeRow(r, true)); });
+      }
+    }
+    box.appendChild(b);
+  }
+  function takeRow(r, done){
+    var row = el("div", "row take" + (done ? " cart" : ""));
+    var nm = el("div", "nm", r.name);
+    if(r.by !== "famille") nm.appendChild(el("small", null, "demandé par " + who(r.by)));
+    row.appendChild(nm);
+    if(r.q > 1) row.appendChild(el("span", "big", "×" + r.q));
+    row.onclick = function(){ if(done) untake(r.id); else take(r); };
+    return row;
+  }
+
+  // Barre du bas (les deux vues) : « Terminer les courses » retire de la liste ce qui est pris
+  function renderFinishBar(lines){
+    var cart = 0, i, bar = $("finishBar"), fin = $("finish");
+    for(i = 0; i < lines.length; i++){ if(lines[i].cart) cart++; }
+    if(cart > 0){
+      bar.className = "sticky show";
+      fin.textContent = ui.confirm === "finish" ? "Appuie encore pour confirmer (" + cart + " retiré" + (cart > 1 ? "s" : "") + ")"
+                                                : "✓ Terminer les courses (" + cart + " pris)";
+      fin.onclick = function(){ twoTap("finish", function(){ hideUndo(); H.finishShopping(); }); };
+    } else {
+      bar.className = "sticky";
+      if(ui.confirm === "finish") ui.confirm = null;   // plus rien à terminer : l'armement ne doit pas attendre la prochaine prise
+    }
+  }
+  function renderModes(left, props){
+    var shop = ui.mode === "shop";
+    $("prep").style.display = shop ? "none" : "block";
+    $("shopview").style.display = shop ? "block" : "none";
+    $("modePrep").className = shop ? "" : "on";
+    $("modeShop").className = shop ? "on" : "";
+    $("modeShop").textContent = "🛒 En magasin" + (left > 0 ? " · " + left : "");
+    $("modePrep").textContent = "📝 Préparer" + (props > 0 ? " · 💬 " + props : "");   // propositions des enfants à classer
   }
 
   // ---- Ajouter un article ----
@@ -258,7 +356,7 @@
       nm.appendChild(el("small", null, H.section(it.section).emoji + " " + H.section(it.section).name));
       row.appendChild(nm);
       if(n.hasOwnProperty(it.id)) row.appendChild(el("span", "tag", "×" + n[it.id].q));
-      row.appendChild(btn("＋", "sm ok", function(){ H.addOne(it.id); render(); }));
+      row.appendChild(btn("＋", "sm ok", function(){ more(it.id, it.name); render(); }));
       box.appendChild(row);
     });
     if(!found.length) box.appendChild(el("div", "empty", "Aucun article de ce nom."));
@@ -294,7 +392,7 @@
         var row = el("div", "row"), nm = el("div", "nm", it.name);
         row.appendChild(nm);
         if(n.hasOwnProperty(it.id)) row.appendChild(el("span", "tag", "×" + n[it.id].q));
-        row.appendChild(btn("＋", "sm ok", function(){ H.addOne(it.id); render(); }));
+        row.appendChild(btn("＋", "sm ok", function(){ more(it.id, it.name); render(); }));
         row.appendChild(btn("✎", "sm ghost", function(){
           ui.editing = ui.editing === it.id ? null : it.id; ui.edit = {name: it.name, section: it.section}; render();
         }));
@@ -335,32 +433,57 @@
     renderStatus();
     if(!H.known()){
       lastSig = "";   // au retour des données, on redessine même si elles sont identiques à celles d'avant
-      $("inbox").innerHTML = "";
-      var b = $("tobuy"); b.innerHTML = "";
-      b.appendChild(el("div", "empty", Date.now() - startedAt > 8000
+      renderModes(0, 0);
+      hideUndo();
+      var msg = el("div", "empty", Date.now() - startedAt > 8000
         ? "Impossible de charger la liste pour l'instant (pas de réseau, ou droits à publier). Réessaie dans un moment."
-        : "Chargement de la liste…"));
+        : "Chargement de la liste…");
+      var target = ui.mode === "shop" ? $("shopview") : $("tobuy");
+      $("inbox").innerHTML = ""; $("tobuy").innerHTML = ""; $("shopview").innerHTML = "";
+      target.appendChild(msg);
       $("finishBar").className = "sticky";
       renderResults();
       return;
     }
     lastSig = H.sig();
-    renderInbox();
-    renderToBuy();
-    renderResults();
-    renderManage();
+    var lines = H.lines(), left = 0, i;
+    for(i = 0; i < lines.length; i++){ if(!lines[i].cart) left++; }
+    renderModes(left, H.inbox().length);
+    // le bandeau « Annuler » ne vaut que tant que la ligne est encore prise (remise ou retirée par l'autre parent)
+    if(undoId){
+      var all = H.needs();
+      if(!all.hasOwnProperty(undoId) || !all[undoId].cart) hideUndo();
+    }
+    if(ui.mode === "shop"){
+      renderShop(lines);
+    } else {
+      renderInbox();
+      renderToBuy(lines);
+      renderResults();
+      renderManage();
+    }
+    renderFinishBar(lines);
   }
   function typing(){
+    if(ui.mode === "shop") return false;
     var a = document.activeElement;
     return !!(a && a.tagName && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && a.id !== "search" && app.contains(a));
   }
+  var touchAt = 0, holdTimer = null;
   function onChange(){
     renderStatus();
     if(typing()){ pendingRender = true; return; }
     if(H.known() && H.sig() === lastSig) return;
+    if(ui.mode === "shop" && Date.now() - touchAt < 700){   // un doigt vient de se poser : on ne déplace pas les lignes avant son relevé
+      if(!holdTimer) holdTimer = setTimeout(function(){ holdTimer = null; onChange(); }, 750);
+      return;
+    }
     render();
   }
+  app.addEventListener("touchstart", function(){ touchAt = Date.now(); });
 
+  $("modePrep").onclick = function(){ setMode("prep"); };
+  $("modeShop").onclick = function(){ setMode("shop"); };
   $("search").oninput = function(){ ui.creating = false; renderResults(); };
   app.addEventListener("focusout", function(){ if(pendingRender) setTimeout(function(){ if(!typing()) render(); }, 150); });
 
