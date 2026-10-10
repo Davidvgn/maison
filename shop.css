@@ -25,6 +25,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .empty{color:var(--muted);text-align:center;padding:10px 4px;font-weight:600;}
 #status{display:none;margin:0 0 8px;font-size:.92rem;}
 #status.show{display:block;}
+#app > #status{position:sticky;top:0;z-index:5;}   /* page des enfants : le bandeau d'état reste visible */
 .topbar{position:sticky;top:0;z-index:5;background:var(--bg);padding:4px 0 2px;margin-bottom:8px;}
 .parentlink{margin:0 4px 10px;font-size:.95rem;font-weight:700;}
 .parentlink a{color:#2f6fd0;}
@@ -89,8 +90,7 @@ details.box > summary{font-weight:800;font-size:1.05rem;cursor:pointer;}
 
 /* Annulation de la dernière prise */
 .toast{position:fixed;left:12px;right:12px;bottom:80px;max-width:736px;margin:0 auto;display:none;align-items:center;
-  background:#23304a;color:#fff;border-radius:14px;padding:8px 8px 8px 14px;font-weight:700;z-index:6;pointer-events:none;}
-.toast .btn{pointer-events:auto;}
+  background:#23304a;color:#fff;border-radius:14px;padding:8px 8px 8px 14px;font-weight:700;z-index:6;}
 .toast.show{display:flex;}
 .toast span{flex:1;min-width:0;word-wrap:break-word;}
 .toast .btn{flex:none;}

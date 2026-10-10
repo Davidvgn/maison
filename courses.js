@@ -3,7 +3,7 @@
    Réservée au compte « famille ». Deux vues sur la même liste :
    - « Préparer » : tout (ajouter, quantités, retirer, propositions des
      enfants à classer, gestion des articles) ; les lignes prises y restent,
-     en grisé ;
+     en vert et barrées ;
    - « En magasin » : ce qui reste à prendre, rien d'autre ; un appui sur une
      ligne la marque prise et elle disparaît (annulable).
    JavaScript ancien (ES5).
@@ -113,7 +113,9 @@
     undoId = id;
     t.appendChild(el("span", null, "« " + name + " » pris"));
     t.appendChild(btn("↩ Annuler", "sm ghost", function(){
-      if(Date.now() - takeAt < 500) return;   // même antirebond qu'une prise : le bandeau arrive sous le doigt qui vient d'appuyer
+      var n = Date.now();
+      if(n - takeAt < 500) return;   // même antirebond qu'une prise : le bandeau arrive sous le doigt qui vient d'appuyer
+      takeAt = n;                    // et le suivant est ignoré aussi : la ligne cachée sous le bandeau ne doit pas être prise
       hideUndo(); H.setCart(id, false); render();
     }));
     t.className = "toast show";
@@ -143,11 +145,20 @@
     try{ window.scrollTo(0, 0); }catch(e2){}
   }
 
-  // « + » : une unité de plus. Sur une ligne déjà prise, elle revient avec seulement ce qui manque : on le dit.
-  function more(id, name){
-    var all = H.needs(), was = all.hasOwnProperty(id) && all[id].cart ? all[id].q : 0;
-    if(!H.addOne(id)) return;
+  // Quantité déjà prise d'une ligne (0 si la ligne n'est pas prise ou n'existe pas)
+  function takenQty(id){
+    var all = H.needs();
+    return all.hasOwnProperty(id) && all[id].cart ? all[id].q : 0;
+  }
+  // Une ligne prise qui reçoit une unité de plus revient avec seulement ce qui manque : on le dit
+  function sayTaken(was, name){
     if(was) flash("« " + name + " » : " + was + " déjà pris, il en reste 1 à prendre.");
+    else if(flashText){ flashText = ""; renderStatus(); }   // le message d'un appui précédent ne doit pas rester affiché
+  }
+  function more(id, name){
+    var was = takenQty(id);
+    if(!H.addOne(id)){ flash("Cet article n'existe plus dans le catalogue : retire la ligne avec ✕."); return; }
+    sayTaken(was, name);
   }
 
   function sectionSelect(value, onchange){
@@ -213,7 +224,9 @@
     f.appendChild(sel);
     f.appendChild(btn("Ajouter celui-là à la liste", "ok", function(){
       if(!ui.form.pick){ flash("Choisis d'abord un article dans la liste."); return; }
-      if(H.fileInbox(p.id, ui.form.pick, p.by)) ui.filing = null;
+      var was = takenQty(ui.form.pick), picked = null, k, all = H.items();
+      for(k = 0; k < all.length; k++){ if(all[k].id === ui.form.pick) picked = all[k]; }
+      if(H.fileInbox(p.id, ui.form.pick, p.by)){ ui.filing = null; sayTaken(was, picked ? picked.name : ui.form.pick); }
       else flash("Cet article n'existe plus : choisis-en un autre.");
       render();
     }));
@@ -237,7 +250,7 @@
     var h = el("h2", null, "📝 La liste à acheter");
     h.appendChild(el("span", "n", String(lines.length)));
     box.appendChild(h);
-    if(taken > 0) box.appendChild(el("div", "sh-sub", taken + " déjà pris (grisé). Ils se prennent dans la vue « En magasin »."));
+    if(taken > 0) box.appendChild(el("div", "sh-sub", taken + " déjà pris (en vert, barrés). Ils se prennent dans la vue « En magasin »."));
     if(!lines.length){
       box.appendChild(el("div", "empty", "Rien à acheter pour l'instant. Ajoute un article ci-dessous."));
     }

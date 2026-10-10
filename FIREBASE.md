@@ -146,21 +146,21 @@ Sur chaque appareil : ouvrir la page de la maison > en bas, **🔐 Connexion de 
 
 ## La maison : lave-vaisselle, sèche-linge, étendage
 
-Sur la page de la tablette (et sur ton téléphone, connecté en compte `famille`), trois tuiles apparaissent au-dessus des cartes des enfants.
+Sur la page de la tablette (et sur ton téléphone, connecté en compte `famille`), trois tuiles de machines apparaissent au-dessus des cartes des enfants, suivies de la tuile « 🛒 Courses » (voir plus bas).
 
 | Tuile | Les parents appuient | Les enfants voient | Quand ça disparaît |
 |---|---|---|---|
-| 🍽️ Lave-vaisselle | **Lancé** | « Vider le lave-vaisselle » (ne bloque l'écran que s'il a été lancé un jour précédent, hors mercredi et week-end) | un enfant appuie sur la tâche (ou toi sur **✓ Vidé**) : elle disparaît chez tous |
-| 🧺 Sèche-linge | **Lancé** | « Sortir les serviettes du sèche-linge », puis « Plier les serviettes et les torchons, et les ranger » (facultatifs, ne comptent pas pour l'écran) | chaque étape est validée par le premier enfant qui la fait (ou par toi : **✓ Sorties**, **✓ Rangées**) |
-| 👕 Étendage | **Linge étendu** | « Récupérer mon linge sec sur l'étendage et le ranger », pour chaque enfant (ne bloque pas l'écran) | chaque enfant la coche pour lui ; la tuile montre qui a fini |
+| 🍽️ Lave-vaisselle | **▶ Lancer** | « Vider le lave-vaisselle » (ne bloque l'écran que s'il a été lancé un jour précédent, hors mercredi et week-end) | un enfant appuie sur la tâche (ou toi sur **✓ Vidé**) : elle disparaît chez tous |
+| 🧺 Sèche-linge | **▶ Lancer** | « Sortir les serviettes du sèche-linge », puis « Plier les serviettes et les torchons, et les ranger » (facultatifs, ne comptent pas pour l'écran) | chaque étape est validée par le premier enfant qui la fait (ou par toi : **✓ Sorties**, **✓ Rangées**) |
+| 👕 Étendage | **▶ J'ai étendu du linge** | « Récupérer mon linge sec sur l'étendage et le ranger », pour chaque enfant (ne bloque pas l'écran) | chaque enfant la coche pour lui ; la tuile montre qui a fini |
 
 - **↺ Annuler** corrige un appui par erreur (il clôt l'étape en cours : la base le refuse si quelqu'un a relancé entre-temps) ; **✓ Vidé / Sorties / Rangées** valide l'étape à la place des enfants.
-- Un deuxième appui sur le même bouton moins de 2 secondes après le premier est ignoré. « Linge étendu » est masqué tant qu'un enfant n'a pas récupéré le sien.
-- Un « Lancé » ou « Linge étendu » resté plus de 10 minutes en attente (appareil sans réseau) n'est pas rejoué : il rouvrirait une étape déjà faite.
-- La durée d'un cycle n'est pas connue : les tâches apparaissent dès l'appui sur « Lancé », avec l'heure. Les enfants attendent que la machine soit arrêtée.
-- Si tu oublies d'appuyer sur « Lancé », les enfants ne voient rien : c'est le bouton qui déclenche la tâche (elle remplace l'ancienne tâche fixe « Vider le lave-vaisselle »).
+- Un deuxième appui sur la même tuile moins de 1,5 seconde après le premier est ignoré, même s'il porte sur un autre de ses boutons (« Annuler » juste après « ▶ Lancer » : réappuie une seconde plus tard). « ▶ J'ai étendu du linge » est masqué tant qu'un enfant n'a pas récupéré le sien.
+- Un « ▶ Lancer » ou « ▶ J'ai étendu du linge » resté plus de 10 minutes en attente (appareil sans réseau) n'est pas rejoué : il rouvrirait une étape déjà faite.
+- La durée d'un cycle n'est pas connue : les tâches apparaissent dès l'appui sur « ▶ Lancer », avec l'heure. Les enfants attendent que la machine soit arrêtée.
+- Si tu oublies d'appuyer sur « ▶ Lancer », les enfants ne voient rien : c'est le bouton qui déclenche la tâche (elle remplace l'ancienne tâche fixe « Vider le lave-vaisselle »).
 - Tant que l'appareil n'est pas connecté, ou que les nouvelles règles ne sont pas publiées, les pages gardent l'ancienne tâche fixe.
-- Les tâches de la maison ne comptent pas dans la barre de progression des enfants.
+- Les tâches de la maison ne comptent pas dans la barre de progression des enfants, sauf « Vider le lave-vaisselle » quand il bloque l'écran (lancé un jour précédent, hors mercredi et week-end) : elle compte alors comme une tâche à faire, et la barre n'atteint 100 % qu'une fois le lave-vaisselle vidé.
 - Un enfant qui utilise la tablette (connectée en `famille`) peut aussi appuyer sur les boutons, y compris « Annuler » : c'est à surveiller.
 
 ## Les courses
@@ -170,14 +170,14 @@ Une liste partagée, par rayon, pour les parents ; les enfants peuvent y **ajout
 | Qui | Où | Ce que ça permet |
 |---|---|---|
 | Parents (compte `famille`) | `courses.html` (tuile « 🛒 Courses » sur la page tablette) | deux vues sur la même liste (voir plus bas) : **📝 Préparer** (ajouter, quantités, retirer, classer les propositions des enfants, créer, renommer, ranger, supprimer des articles) et **🛒 En magasin** (ce qui reste à prendre ; un appui = pris, la ligne disparaît) ; « Terminer les courses » retire de la liste ce qui est pris |
-| Enfants | `liste.html` (lien « 🛒 Ajouter à la liste de courses » sur leur page) | chercher un article du catalogue et l'ajouter avec une quantité ; voir ce qui est déjà demandé (et par qui) sans pouvoir le changer ; proposer « autre chose » en texte libre |
+| Enfants | `liste.html` (lien « 🛒 Ajouter à la liste de courses » sur leur page) | chercher un article du catalogue et l'ajouter avec une quantité ; voir ce qui est déjà demandé (et par qui, tant que la ligne n'est pas prise) sans pouvoir le changer ; une ligne déjà prise au magasin est indiquée « déjà pris au magasin » ; proposer « autre chose » en texte libre |
 
-- **Tout le monde alimente la même liste** : les parents depuis « Préparer » (recherche, « ➕ Créer » si l'article n'existe pas), les enfants depuis `liste.html`. Une ligne ajoutée par un enfant porte « demandé par … » ; celles des parents n'ont pas d'étiquette : les deux parents ont le même rôle `famille` (chacun son compte), l'application note « les parents » sans dire lequel des deux. Pour savoir qui a ajouté quoi, il faudrait deux rôles distincts (une modification des règles).
+- **Tout le monde alimente la même liste** : les parents depuis « Préparer » (recherche, « ➕ Créer » si l'article n'existe pas), les enfants depuis `liste.html`. Une ligne ajoutée par un enfant porte « demandé par … » ; celles des parents n'ont pas d'étiquette chez les parents, et s'affichent « déjà demandé par les parents » chez les enfants : les deux parents ont le même rôle `famille` (chacun son compte), l'application note « les parents » sans dire lequel des deux. Pour savoir qui a ajouté quoi, il faudrait deux rôles distincts (une modification des règles).
 - **Les deux vues** :
-  - **📝 Préparer** montre toute la liste, y compris les lignes déjà prises (grisées, « ✓ pris »). On n'y prend rien : on y règle les quantités et on retire les articles dont on n'a plus besoin. Le bouton affiche « 💬 n » quand des propositions d'enfants attendent d'être classées.
+  - **📝 Préparer** montre toute la liste, y compris les lignes déjà prises (en vert et barrées, « ✓ pris »). On n'y prend rien : on y règle les quantités et on retire les articles dont on n'a plus besoin. Le bouton affiche « 💬 n » quand des propositions d'enfants attendent d'être classées.
   - **🛒 En magasin** ne montre que ce qui reste à prendre, rangé par rayon, en gros. Un appui sur une ligne la marque prise : elle disparaît et un bandeau « ↩ Annuler » reste 6 secondes. « Voir aussi les articles pris » les réaffiche ; un appui sur l'une d'elles la remet dans la liste.
   - Le « pris » est partagé : une ligne prise par un parent disparaît aussi chez l'autre, en direct tant que l'écran est allumé et le réseau bon. Jusqu'à 20 s d'écart sur un appareil qui ne garde pas la connexion en direct ; si la connexion tombe sans prévenir, jusqu'à 2 minutes sans mise à jour (le bandeau « Pas de réseau » vient ensuite).
-  - Quand quelqu'un fait « + » sur une ligne déjà prise, elle revient dans « En magasin » avec **seulement ce qui manque** : 3 pris puis « + » = « ×1 » (et la page des parents le dit). Les 3 déjà pris restent acquis.
+  - Quand quelqu'un fait « + » sur une ligne déjà prise, elle revient dans « En magasin » avec **seulement ce qui manque** : 3 pris puis « + » = 1 à prendre (la vue n'écrit « ×… » qu'à partir de 2 ; la page des parents annonce « 3 déjà pris, il en reste 1 à prendre » quelques secondes, aussi quand on classe une proposition d'enfant sur une ligne prise). Les 3 déjà pris restent acquis.
   - Ouvre la vue « En magasin » **avant d'entrer** si le réseau est mauvais et ne ferme pas l'application : une page déjà ouverte continue de marcher sans réseau (les « pris » partent au retour du réseau), mais une page qu'on rouvre sans réseau peut ne pas se charger.
   - La vue choisie est gardée sur chaque appareil. `courses.html?mode=magasin` ouvre directement « En magasin » (utile pour un raccourci sur l'écran d'accueil du téléphone).
   - Un double appui est ignoré (la ligne suivante qui prend la place sous le doigt n'est pas prise par erreur).
