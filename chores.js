@@ -2,7 +2,8 @@
    Page "Ma journée" d'un enfant (Jérémy / Liam / Nina)
    - Lit window.CHILDREN[window.CHILD_KEY] (children.js)
    - Calendrier et liste des tâches : chores-core.js
-   - Réinitialisation auto chaque jour ; avancement mémorisé par appareil.
+   - Réinitialisation auto chaque jour.
+   - Coches partagées entre appareils (sync.js) si l'appareil est connecté.
    ================================================================ */
 (function(){
   "use strict";
@@ -23,8 +24,44 @@
   // ---- Feu écran + bandeau horaire (même logique que la tablette) ----
   var lightEl=document.createElement("div"); lightEl.id="screenLight"; lightEl.className="screen-light";
   var tbEl=document.createElement("div"); tbEl.id="timeBanner"; tbEl.className="time-banner";
+  var syncEl=document.createElement("div"); syncEl.id="syncBanner"; syncEl.className="sync-banner";
+  banner.parentNode.insertBefore(syncEl, banner);
   banner.parentNode.insertBefore(tbEl, banner);
   banner.parentNode.insertBefore(lightEl, banner);
+
+  // ---- État de la synchro (rien d'affiché quand tout va bien) ----
+  function updateSync(){
+    var b=C.syncBadge(CHILD);
+    syncEl.className="sync-banner"+(b?" show "+b.k:"");
+    syncEl.innerHTML="";
+    if(!b) return;
+    var t=document.createElement("span"); t.textContent=b.t; syncEl.appendChild(t);
+    if(b.link){
+      var a=document.createElement("a"); a.href=b.link; a.textContent=b.lt;
+      a.onclick=function(e){ if(e&&e.preventDefault) e.preventDefault(); location.href=b.link; };   // reste dans l'appli d'écran d'accueil (vieux iOS)
+      syncEl.appendChild(a);
+    }
+  }
+
+  // Reçu d'un autre appareil : on ne redessine que si une coche a vraiment changé
+  // (redessiner sous le doigt fait perdre le toucher sur iPhone/iPad)
+  var lastSig="";
+  function signature(){ return C.visibleTasks(CHILD, cfg, today, tomorrow).map(function(t){ return t.id+(isDone(t)?"1":"0"); }).join(","); }
+  function onRemote(){ if(signature()!==lastSig) applyDay(); else updateSync(); }
+
+  // ---- Nouveau jour (page restée ouverte la nuit) : on recharge avant toute coche ----
+  var testDate=!!C.qs("date");
+  function dayChanged(){ return !testDate && C.dateKey(C.now())!==DAILY_K; }
+  function reloadIfNewDay(){
+    if(!dayChanged()) return false;
+    if(navigator.onLine===false){ rollDay(); return true; }   // sans réseau, un rechargement afficherait une page d'erreur
+    location.reload(); return true;
+  }
+  function rollDay(){
+    today=C.now(); tomorrow=C.addDays(today,1); DAILY_K=C.dateKey(today);
+    C.watch([CHILD], today, null);
+    applyDay(); loadWeather();
+  }
   function updateLight(){
     var n=C.now(), h=n.getHours()+n.getMinutes()/60;
     var gateLeft=tasks.filter(function(t){return t.gate && !isDone(t);}).length;
@@ -81,7 +118,7 @@
     if(st.key==="vac"){ banner.textContent="🏖️ "+C.vacName(today)+" — pas d'école ! (les tâches maison continuent)"; banner.classList.add("show"); }
     else if(st.key==="ferie"){ banner.textContent="🎉 Jour férié : "+(st.name||"")+" — pas d'école !"; banner.classList.add("show"); }
 
-    tasks=C.buildTasks(cfg, today, tomorrow);
+    tasks=C.visibleTasks(CHILD, cfg, today, tomorrow);
 
     container.innerHTML="";
     C.BLOCKS.forEach(function(b){
@@ -99,9 +136,11 @@
           '<div class="label">'+task.label+(task.optional?'<span class="opt">Facultatif</span>':'')+(task.note?'<span class="note">'+task.note+'</span>':'')+(task.href?'<span class="go">'+(task.linkLabel||'▶ Voir')+'</span>':'')+'</div>'+
           '<div class="check">✓</div>';
         function toggle(){
+          if(reloadIfNewDay()) return;
           var now=!el.classList.contains("done");
           el.classList.toggle("done",now);
           C.setDone(CHILD,task,today,now);
+          lastSig=signature();
           updateProgress();
         }
         if(task.href){
@@ -115,7 +154,9 @@
       container.appendChild(block);
     });
 
+    lastSig=signature();
     updateProgress();
+    updateSync();
   }
 
   // ---- Météo : carte sous l'en-tête (données et rendu dans chores-core.js) ----
@@ -132,8 +173,10 @@
   var hdrEl=document.querySelector("header"); if(hdrEl){ hdrEl.insertAdjacentElement("afterend", wxCard); }
 
   renderRules();
+  C.watch([CHILD], today, onRemote);   // coches faites sur un autre appareil (tablette, téléphone)
   applyDay();
-  setInterval(updateLight, 30000);
+  setInterval(function(){ if(!reloadIfNewDay()){ updateLight(); updateSync(); } }, 30000);
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden) reloadIfNewDay(); });
   C.refreshVac(applyDay);
   loadWeather();
 })();

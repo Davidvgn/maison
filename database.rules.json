@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "members": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+    "done": {
+      "$period": {
+        ".read": "auth != null && root.child('members').child(auth.uid).val() === 'famille'",
+        "$kid": {
+          ".read": "auth != null && (root.child('members').child(auth.uid).val() === 'famille' || root.child('members').child(auth.uid).val() === $kid)",
+          "$task": {
+            ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'famille' || root.child('members').child(auth.uid).val() === $kid) && $kid.matches(/^(jeremy|liam|nina)$/) && $period.matches(/^(\\d\\d\\d\\d-\\d\\d-\\d\\d|WE-\\d\\d\\d\\d-W\\d\\d?)$/) && $task.length <= 60 && $task.matches(/^[a-z0-9]+_[A-Za-z0-9]*(_[0-9]+)?$/)",
+            ".validate": "newData.isString() && newData.val().matches(/^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d$/)"
+          }
+        }
+      }
+    }
+  }
+}
