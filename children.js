@@ -21,7 +21,7 @@ window.CHILDREN = {
     schoolWeekdays: [1,2,3,4,5],      // école aussi le mercredi (matin)
     hairDays: [3,0],                  // cheveux : mercredi + dimanche
     morningExtra: [
-      {emoji:"🪟", label:"Aérer ma chambre", note:"Ouvrir la fenêtre 5-10 min"},
+      {emoji:"🪟", label:"Aérer ma chambre", note:"Ouvrir la fenêtre 5 min"},
       {emoji:"🏀", label:"Prendre mon sac de sport", note:"Lundi et jeudi", days:[1,4], schoolOnly:true}
     ],
     sportExtra: [
@@ -51,6 +51,7 @@ window.CHILDREN = {
     schoolWeekdays: [1,2,4,5],   // lundi, mardi, jeudi, vendredi
     hairDays: [3,0],             // cheveux : mercredi + dimanche
     morningExtra: [
+      {emoji:"🪟", label:"Aérer ma chambre", note:"Ouvrir la fenêtre 5 min"},
       {emoji:"💻", label:"Mettre dans mon sac : ordi, chargeur, casque, souris", schoolOnly:true},
       {emoji:"🧃", label:"Préparer ma gourde et mon goûter, et les mettre dans mon sac", note:"Eau dans la gourde + goûter dans la boîte", schoolOnly:true}
     ],
@@ -78,6 +79,7 @@ window.CHILDREN = {
     hairDays: [3,0],             // cheveux : mercredi + dimanche
     toiletteNote: "Me laver les mains et le visage", // pas de déo (8 ans) — à ajuster si besoin
     morningExtra: [
+      {emoji:"🪟", label:"Aérer ma chambre", note:"Ouvrir la fenêtre 5 min"},
       {emoji:"🧃", label:"Préparer ma gourde et mon goûter, et les mettre dans mon sac", note:"Eau dans la gourde + goûter dans la boîte", schoolOnly:true}
     ],
     afterSchoolExtra: [
@@ -85,7 +87,9 @@ window.CHILDREN = {
     ],
     eveningExtra: [
       {emoji:"🍽️", label:"Débarrasser la table", note:"Avec Liam"},
-      {emoji:"🌸", label:"Mettre du Febreze (rideaux + maison)", note:"Ma tâche · provisoire : samedi", days:[6]},
+      // Febreze (désodorisant) : le mercredi, et 1 fois le week-end (samedi OU dimanche : faite le samedi, elle disparaît le dimanche)
+      {emoji:"🌸", label:"Mettre du Febreze (rideaux + maison)", note:"Ma tâche · le mercredi", days:[3]},
+      {emoji:"🌸", label:"Mettre du Febreze (rideaux + maison)", note:"Ma tâche · 1 fois ce week-end (samedi ou dimanche)", scope:"weekend"},
       {emoji:"🦉", label:"Faire mon Duolingo"}
     ]
   }
