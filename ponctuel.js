@@ -64,7 +64,7 @@
 
   // ---- État de l'écran ----
   var today = new Date(), todayStr = C.ymd(today), startedAt = Date.now();
-  var ui = {dates: {}, kids: {}, month: new Date(today.getFullYear(), today.getMonth(), 1), showLib: false, confirm: null};
+  var ui = {dates: {}, kids: {}, month: new Date(today.getFullYear(), today.getMonth(), 1), showLib: false, confirm: null, dayTouched: false};
   ui.dates[todayStr] = 1;
   var flashText = "", flashTimer = null, confirmTimer = null, armedAt = 0, addAt = 0, pruned = false;
 
@@ -143,14 +143,25 @@
     }
     return res;
   }
-  function pastLabels(){
-    var res = entries(), seen = {}, out = [], d, id;
-    for(d in res){ if(!has(res, d)) continue; for(id in res[d]){ if(has(res[d], id) && !seen[res[d][id].label]){ seen[res[d][id].label] = 1; out.push(res[d][id].label); } } }
+  function pastLabels(){   // les plus récentes d'abord (jour le plus récent, puis dernier créé)
+    var res = entries(), seen = {}, out = [], days = [], d, i, ids, id, j;
+    for(d in res){ if(has(res, d)) days.push(d); }
+    days.sort().reverse();
+    for(i = 0; i < days.length; i++){
+      ids = [];
+      for(id in res[days[i]]){ if(has(res[days[i]], id)) ids.push(id); }
+      ids.sort().reverse();
+      for(j = 0; j < ids.length; j++){
+        var l = res[days[i]][ids[j]].label;
+        if(!seen[l]){ seen[l] = 1; out.push(l); }
+      }
+    }
     return out;
   }
+  var MAXLEN = 80;
   function cleanLabel(t){
-    var s = String(t).replace(/[|<>&\r\n\t]+/g, " ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "").slice(0, 60);
-    return cap(s).replace(/^\s+|\s+$/g, "");
+    var s = String(t).replace(/[|<>\r\n\t]+/g, " ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+    return cap(s);   // la longueur est contrôlée par add(), jamais coupée en silence
   }
   function pick(label){
     $("label").value = label;
@@ -195,12 +206,16 @@
   // ---- 2 · Le jour (calendrier) ----
   function toggleDay(str){
     if(str < todayStr) return;
+    if(!ui.dayTouched){ ui.dayTouched = true; ui.dates = {}; }   // « Aujourd'hui » n'était qu'un choix par défaut : le premier jour choisi le remplace
     if(ui.dates[str]) delete ui.dates[str]; else ui.dates[str] = 1;
     renderQuick(); renderCal(); renderPicked();
   }
   function renderQuick(){
     var box = $("quick"); box.innerHTML = "";
+    var seenQ = {};
     [["Aujourd'hui", todayStr], ["Demain", C.ymd(addDaysTo(today, 1))], ["Samedi", nextDow(6)], ["Dimanche", nextDow(0)]].forEach(function(q){
+      if(seenQ[q[1]]) return;   // le samedi, « Samedi » serait « Aujourd'hui » : une seule puce par jour
+      seenQ[q[1]] = 1;
       var on = !!ui.dates[q[1]];
       box.appendChild(btn(q[0], "chip" + (on ? " on" : ""), function(){
         var d = parseDay(q[1]); ui.month = new Date(d.getFullYear(), d.getMonth(), 1);
@@ -258,29 +273,53 @@
 
   // ---- Ajout ----
   function newId(){ return Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36); }
-  function checkSaved(days, kids, id){
+  // Paires (jour, enfant) écrites par cette page puis retirées : elles ne comptent pas dans la vérification
+  var removed = {};
+  function checkSaved(pairs, id){
     setTimeout(function(){
-      var ok = false, i, j, g;
-      for(i = 0; i < days.length && !ok; i++){
-        g = S.getGroup("extra", days[i]);
-        for(j = 0; j < kids.length; j++){ if(has(g, kids[j] + "_" + id)) ok = true; }
-      }
-      if(!ok) flash("La base n'a pas gardé la tâche (règles pas publiées ?). Réessaie, ou préviens-moi.");
+      var live = pairs.filter(function(p){ return !removed[p[0] + "/" + p[1] + "_" + id]; }), ok = false, i;
+      if(!live.length) return;   // tout a été retiré entre-temps : rien à vérifier
+      for(i = 0; i < live.length && !ok; i++){ if(has(S.getGroup("extra", live[i][0]), live[i][1] + "_" + id)) ok = true; }
+      if(!ok) flash("La base n'a pas gardé la tâche (règle /extra pas publiée ?). Réessaie, ou préviens-moi.");
     }, 5000);
   }
+  // Libellés (sans majuscules ni accents) que cet enfant a déjà ce jour-là : sa journée habituelle + les tâches ponctuelles déjà données
+  function haveOn(day, kid){
+    var set = {}, d = parseDay(day), noon = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
+    var next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 12, 0, 0), res = entries(), id, e;
+    if(K[kid]){ C.buildTasks(K[kid], noon, next).forEach(function(t){ set[H.norm(t.label)] = 1; }); }
+    if(res[day]){ for(id in res[day]){ if(has(res[day], id)){ e = res[day][id]; if(e.kids.indexOf(kid) !== -1) set[H.norm(e.label)] = 1; } } }
+    return set;
+  }
+  function dayChanged(){ return C.ymd(new Date()) !== todayStr; }
   function add(){
     var n = Date.now();
     if(n - addAt < 1500) return;   // double appui
+    if(dayChanged()){ flash("Un nouveau jour a commencé : la page se recharge."); setTimeout(function(){ location.reload(); }, 900); return; }
     var label = cleanLabel($("label").value), days = pickedDays(), kids = pickedKids();
-    if(!S.known("extra")){ flash("La liste n'est pas encore chargée : réessaie dans un instant."); return; }
+    if(!S.known("extra")){
+      flash(Date.now() - startedAt > 8000 ? "Impossible d'enregistrer : pas de réseau, ou règle /extra pas publiée (FIREBASE.md, étape 6)." : "La liste n'est pas encore chargée : réessaie dans un instant.");
+      return;
+    }
     if(!label){ flash("Écris la tâche, ou choisis-la dans la liste."); return; }
+    if(label.length > MAXLEN){ flash("Tâche trop longue (" + MAXLEN + " signes au plus, là " + label.length + ") : raccourcis-la."); return; }
     if(!days.length){ flash("Choisis au moins un jour dans le calendrier."); return; }
     if(!kids.length){ flash("Choisis au moins un enfant."); return; }
+    // on n'ajoute pas une tâche que l'enfant a déjà ce jour-là (elle le bloquerait deux fois)
+    var pairs = [], skipped = [], norm = H.norm(label);
+    days.forEach(function(d){
+      kids.forEach(function(k){
+        if(haveOn(d, k)[norm]) skipped.push(kidName(k) + " " + shortDay(d)); else pairs.push([d, k]);
+      });
+    });
+    if(!pairs.length){ flash("Déjà prévue pour : " + skipped.join(", ") + ". Rien n'a été ajouté."); return; }
     addAt = n;
     var id = newId(), value = ($("must").checked ? "1" : "0") + "|" + label;
-    days.forEach(function(d){ kids.forEach(function(k){ S.setExtra(d, k + "_" + id, value); }); });
-    checkSaved(days, kids, id);
-    flash("✓ « " + label + " » ajoutée pour " + kids.map(kidName).join(", ") + " · " + days.map(shortDay).join(", "));
+    pairs.forEach(function(p){ S.setExtra(p[0], p[1] + "_" + id, value); });
+    checkSaved(pairs, id);
+    var who = [], when = [];
+    pairs.forEach(function(p){ if(who.indexOf(kidName(p[1])) === -1) who.push(kidName(p[1])); if(when.indexOf(shortDay(p[0])) === -1) when.push(shortDay(p[0])); });
+    flash("✓ « " + label + " » ajoutée pour " + who.join(", ") + " · " + when.join(", ") + (skipped.length ? " (déjà prévue, non ajoutée : " + skipped.join(", ") + ")" : ""));
     $("label").value = "";
     renderSugg(); renderUpcoming();
   }
@@ -324,7 +363,7 @@
         row.appendChild(nm);
         var key = day + "|" + idv, armed = ui.confirm === key;
         var x = el("button", "x" + (armed ? " armed" : ""), armed ? "Retirer ?" : "✕"); x.type = "button";
-        x.onclick = function(){ twoTap(key, function(){ e.kids.forEach(function(k){ S.setExtra(day, k + "_" + idv, null); }); }); };
+        x.onclick = function(){ twoTap(key, function(){ e.kids.forEach(function(k){ removed[day + "/" + k + "_" + idv] = 1; S.setExtra(day, k + "_" + idv, null); }); }); };
         row.appendChild(x);
         box.appendChild(row);
       });
@@ -356,5 +395,8 @@
 
   S.watch([], [], onChange, ["extra"]);
   render();
-  setInterval(function(){ renderStatus(); if(!S.known("extra")) renderUpcoming(); }, 3000);
+  // page restée ouverte la nuit : « aujourd'hui » doit changer (on ne recharge pas sous les doigts de quelqu'un qui écrit)
+  function reloadIfNewDay(){ if(dayChanged() && !$("label").value){ location.reload(); } }
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden) reloadIfNewDay(); });
+  setInterval(function(){ reloadIfNewDay(); renderStatus(); if(!S.known("extra")) renderUpcoming(); }, 3000);
 })();

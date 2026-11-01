@@ -21,7 +21,7 @@ Le jeton de connexion est rangé dans le stockage du site `davidvgn.github.io`, 
 
 Qui peut faire quoi, avec les règles de `database.rules.json` :
 
-- un compte enfant lit et coche **seulement ses propres tâches** (Liam ne peut ni voir ni cocher celles de Nina) ;
+- un compte enfant lit et coche **seulement ses propres coches** (Liam ne peut ni voir ni cocher celles de Nina) ; il peut en revanche lire l'état de la maison, la liste de courses et les tâches ponctuelles données par les parents (celles de tous les enfants, mais il n'en coche que les siennes) ;
 - le compte `famille` (tablette + téléphone du parent) lit et coche pour les trois ;
 - n'importe quel autre compte, même créé par un inconnu avec la clé publique, n'a accès à **rien** : il n'est pas dans `members` ;
 - personne, même un compte autorisé, ne peut modifier `members` depuis le site ;
@@ -153,7 +153,7 @@ Sur chaque appareil : ouvrir la page de la maison > en bas, **🔐 Connexion de 
 
 ## La maison : lave-vaisselle, sèche-linge, étendage
 
-Sur la page de la tablette (et sur ton téléphone, connecté en compte `famille`), trois tuiles de machines apparaissent au-dessus des cartes des enfants, suivies de la tuile « 🛒 Courses » (voir plus bas).
+Sur la page de la tablette (et sur ton téléphone, connecté en compte `famille`), trois tuiles de machines apparaissent au-dessus des cartes des enfants, suivies de la tuile « 🛒 Courses » et de la tuile « ⭐ Tâche ponctuelle » (voir plus bas).
 
 | Tuile | Les parents appuient | Les enfants voient | Quand ça disparaît |
 |---|---|---|---|
@@ -212,11 +212,14 @@ Pour donner une tâche en plus à un ou plusieurs enfants, un jour précis (« r
 
 - **Où** : `ponctuel.html` (tuile « ⭐ Tâche ponctuelle » sur la page tablette, ou lien en bas de la page d'accueil), compte `famille` seulement.
 - **Comment** : 1) tu écris la tâche, ou tu la prends dans la liste des tâches de la maison (« 📋 Choisir dans la liste ») ; 2) tu choisis un ou plusieurs jours (Aujourd'hui, Demain, Samedi, Dimanche, ou n'importe quel jour du calendrier, jusqu'à six mois) ; 3) tu choisis Jérémy, Liam, Nina ou « Les 3 » ; 4) tu coches « Doit être faite avant l'écran » ou non (facultative) ; 5) « Ajouter la tâche ».
-- **Chez l'enfant et sur la tablette** : le jour dit, un bloc « ⭐ En plus aujourd'hui » apparaît tout en haut de la journée de chaque enfant concerné. Il se coche comme le reste. Si elle est « avant l'écran », elle bloque le feu rouge tant qu'elle n'est pas faite, comme une tâche normale (même le mercredi et le week-end).
+- **Chez l'enfant et sur la tablette** : le jour dit, un bloc « ⭐ En plus aujourd'hui » apparaît en tête de la journée de chaque enfant concerné (juste après « 🏡 Pour la maison » quand une machine est en cours). Il se coche comme le reste. Si elle est « avant l'écran », elle bloque le feu rouge tant qu'elle n'est pas faite, comme une tâche normale (même le mercredi et le week-end).
 - **Retirer** : « À venir » en bas de la page liste ce qui est prévu ; ✕ (deux appuis) retire la tâche pour tous les enfants et le jour concernés.
 - **Données** : `/extra/<jour>/<enfant>_<id>` = `"1|libellé"` (1 = avant l'écran, 0 = facultative) ; la coche de l'enfant est une coche ordinaire (`/done/<jour>/<enfant>/ponctuel_<id>`). Seuls les parents écrivent dans `/extra` ; tous les comptes connectés peuvent le lire. Les jours passés depuis plus de 15 jours sont effacés par la page des parents quand elle s'ouvre.
-- Le libellé ne peut pas contenir `<`, `>`, `&` ni `|` (remplacés par une espace) : il est affiché tel quel sur les pages des enfants.
-- Si la règle `/extra` n'est pas publiée, la page affiche « Impossible de charger les tâches » et une tâche ajoutée disparaît au bout de quelques secondes avec un message : publie les règles (étape 6).
+- Le libellé fait 80 caractères au plus (la page refuse un libellé plus long au lieu de le couper) et ne peut pas contenir `<`, `>` ni `|` (remplacés par une espace) ; `&` est permis et affiché tel quel sur les pages des enfants.
+- On n'ajoute pas une tâche qu'un enfant a déjà ce jour-là (dans sa journée habituelle ou parmi les tâches ponctuelles déjà données) : la page le dit et saute cet enfant, sinon elle le bloquerait deux fois.
+- Le calendrier choisit « Aujourd'hui » par défaut ; le premier jour que tu touches remplace ce choix par défaut.
+- Retirer une tâche que l'enfant a déjà cochée laisse sa coche dans la base (sans effet visible, comme les autres coches).
+- Si la règle `/extra` n'est pas publiée, la page reste sur « Chargement… » puis affiche « Impossible de charger les tâches » et refuse d'ajouter (« règle /extra pas publiée ») ; si la règle manque après coup, une tâche ajoutée disparaît au bout de quelques secondes avec un message : publie les règles (étape 6).
 - Une tâche ponctuelle n'apparaît que sur un appareil connecté (comme tout ce qui est partagé).
 
 ## Au quotidien
@@ -237,7 +240,7 @@ Avec un compte `famille` partagé, l'étape 1 coupe aussi la tablette (et ton t�
 ## Gratuit, et ça le reste
 
 - Le projet reste sur le plan **Spark** (gratuit) tant qu'aucun compte de facturation n'y est rattaché. Sans moyen de paiement, Google ne peut rien facturer : si une limite est dépassée, le service s'arrête jusqu'au mois suivant, c'est tout.
-- Limites Spark : 1 Go stocké, 10 Go téléchargés par mois, 100 connexions ouvertes en même temps. La maison en utilise une infime partie : quelques dizaines de Ko par jour, et deux à trois connexions ouvertes par appareil allumé (le jour, le week-end si besoin, et la maison), plus une pour la liste de courses tant que sa page est ouverte.
+- Limites Spark : 1 Go stocké, 10 Go téléchargés par mois, 100 connexions ouvertes en même temps. La maison en utilise une infime partie : quelques dizaines de Ko par jour, et trois à quatre connexions ouvertes par appareil allumé (le jour, le week-end si besoin, la maison et les tâches ponctuelles), plus une pour la liste de courses tant que sa page est ouverte.
 - À ne pas activer : Cloud Storage, Cloud Functions, App Hosting, passage au plan Blaze. Rien de tout ça n'est utile ici.
 - Seul risque théorique : quelqu'un qui bombarderait l'adresse de la base pourrait épuiser le quota du mois (même les requêtes refusées comptent). Conséquence : synchro coupée jusqu'au mois suivant, les coches restent sur les appareils. Jamais de facture.
 
