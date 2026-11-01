@@ -63,6 +63,16 @@
         }
       }
     },
+    "extra": {
+      ".read": "auth != null && root.child('members').child(auth.uid).val().matches(/^(jeremy|liam|nina|famille)$/)",
+      "$date": {
+        ".write": "auth != null && root.child('members').child(auth.uid).val() === 'famille'",
+        ".validate": "$date.matches(/^\\d\\d\\d\\d-\\d\\d-\\d\\d$/)",
+        "$key": {
+          ".validate": "$key.matches(/^(jeremy|liam|nina)_[a-z0-9]+$/) && $key.length <= 40 && newData.isString() && newData.val().matches(/^[01]\\|[^|<>&]+$/) && newData.val().length <= 62"
+        }
+      }
+    },
     "shop": {
       ".read": "auth != null && root.child('members').child(auth.uid).val().matches(/^(jeremy|liam|nina|famille)$/)",
       "items": {

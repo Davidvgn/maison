@@ -112,6 +112,11 @@ Vérifie-les avec le **Rules Playground** (bouton dans l'éditeur de règles, «
 | suppression | `/shop/inbox` | UID famille | | ✅ autorisé |
 | écriture | `/shop/note/brosseadents` | UID famille | `"Jérémy"` | ✅ autorisé |
 | écriture | `/shop/note/brosseadents` | UID de Liam | `"Jérémy"` | ❌ refusé |
+| écriture | `/extra/2026-11-07/liam_abc1` | UID famille | `"1|Ranger le garage"` | ✅ autorisé |
+| écriture | `/extra/2026-11-07/liam_abc1` | UID de Liam | `"1|Ranger le garage"` | ❌ refusé |
+| écriture | `/extra/2026-11-07/liam_abc1` | UID famille | `"1|<b>x"` (balise) | ❌ refusé |
+| lecture | `/extra` | UID de Liam | | ✅ autorisé |
+| lecture | `/extra` | non authentifié | | ❌ refusé |
 | lecture | `/shop` | UID de Liam | | ✅ autorisé |
 | lecture | `/shop` | non authentifié | | ❌ refusé |
 
@@ -200,6 +205,19 @@ Une liste partagée, par rayon, pour les parents ; les enfants peuvent y **ajout
 - Sans réseau, la page déjà ouverte garde sa liste et les actions partent au retour du réseau. Une page qu'on recharge sans réseau peut ne pas se rouvrir.
 - Pas de photos : le stockage de fichiers de Firebase est payant depuis février 2026.
 - Le compte de ta femme : même procédure que les autres (étape 4), avec le rôle `famille` dans `members` (étape 5).
+
+## Les tâches ponctuelles
+
+Pour donner une tâche en plus à un ou plusieurs enfants, un jour précis (« ranger le garage samedi »), sans toucher aux tâches de tous les jours.
+
+- **Où** : `ponctuel.html` (tuile « ⭐ Tâche ponctuelle » sur la page tablette, ou lien en bas de la page d'accueil), compte `famille` seulement.
+- **Comment** : 1) tu écris la tâche, ou tu la prends dans la liste des tâches de la maison (« 📋 Choisir dans la liste ») ; 2) tu choisis un ou plusieurs jours (Aujourd'hui, Demain, Samedi, Dimanche, ou n'importe quel jour du calendrier, jusqu'à six mois) ; 3) tu choisis Jérémy, Liam, Nina ou « Les 3 » ; 4) tu coches « Doit être faite avant l'écran » ou non (facultative) ; 5) « Ajouter la tâche ».
+- **Chez l'enfant et sur la tablette** : le jour dit, un bloc « ⭐ En plus aujourd'hui » apparaît tout en haut de la journée de chaque enfant concerné. Il se coche comme le reste. Si elle est « avant l'écran », elle bloque le feu rouge tant qu'elle n'est pas faite, comme une tâche normale (même le mercredi et le week-end).
+- **Retirer** : « À venir » en bas de la page liste ce qui est prévu ; ✕ (deux appuis) retire la tâche pour tous les enfants et le jour concernés.
+- **Données** : `/extra/<jour>/<enfant>_<id>` = `"1|libellé"` (1 = avant l'écran, 0 = facultative) ; la coche de l'enfant est une coche ordinaire (`/done/<jour>/<enfant>/ponctuel_<id>`). Seuls les parents écrivent dans `/extra` ; tous les comptes connectés peuvent le lire. Les jours passés depuis plus de 15 jours sont effacés par la page des parents quand elle s'ouvre.
+- Le libellé ne peut pas contenir `<`, `>`, `&` ni `|` (remplacés par une espace) : il est affiché tel quel sur les pages des enfants.
+- Si la règle `/extra` n'est pas publiée, la page affiche « Impossible de charger les tâches » et une tâche ajoutée disparaît au bout de quelques secondes avec un message : publie les règles (étape 6).
+- Une tâche ponctuelle n'apparaît que sur un appareil connecté (comme tout ce qui est partagé).
 
 ## Au quotidien
 

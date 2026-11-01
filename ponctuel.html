@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#34415c" />
+<meta name="robots" content="noindex" />
+<title>Tâche ponctuelle</title>
+<link rel="stylesheet" href="shop.css" />
+<link rel="stylesheet" href="ponctuel.css" />
+</head>
+<body>
+<div class="sh-head">
+  <button class="sh-back" id="back" type="button">← Retour</button>
+  <h1>⭐ Tâche ponctuelle</h1>
+</div>
+
+<div id="gate"><div class="msg">Chargement… Si rien ne s'affiche, recharge la page.</div></div>
+<div id="app" style="display:none">
+  <div class="topbar"><div id="status" class="msg"></div></div>
+
+  <div class="box">
+    <h2>1 · Quelle tâche ?</h2>
+    <input type="text" id="label" maxlength="60" placeholder="Écris-la (ex. Ranger le garage)…" autocomplete="off" />
+    <div id="sugg"></div>
+    <button class="btn ghost" id="libBtn" type="button">📋 Choisir dans la liste des tâches</button>
+    <div id="lib"></div>
+  </div>
+
+  <div class="box">
+    <h2>2 · Quel jour ?</h2>
+    <div id="quick" class="chips"></div>
+    <div id="cal"></div>
+    <div id="picked" class="sh-sub"></div>
+  </div>
+
+  <div class="box">
+    <h2>3 · Pour qui ?</h2>
+    <div id="who" class="chips"></div>
+  </div>
+
+  <div class="box">
+    <label class="opt-line"><input type="checkbox" id="must" checked /> Doit être faite avant l'écran</label>
+    <div class="sh-sub">Décoche pour une tâche facultative (elle ne bloque pas l'écran).</div>
+    <button class="btn ok big" id="add" type="button">Ajouter la tâche</button>
+  </div>
+
+  <div class="box" id="upcoming"></div>
+</div>
+
+<script>
+(function(){
+  var q=["children.js","firebase-config.js","sync.js","shop.js","chores-core.js","ponctuel.js"], t=Date.now();
+  function next(){
+    if(!q.length) return;
+    var s=document.createElement("script"); s.src=q.shift()+(location.protocol==="file:"?"":"?t="+t);
+    s.onload=next; s.onerror=function(){ window.LOAD_FAILED=true; next(); }; document.body.appendChild(s);
+  }
+  next();
+})();
+</script>
+</body>
+</html>

@@ -301,6 +301,13 @@
       so.onclick=function(){ location.href="courses.html?back=tablet.html"; };
       sr.appendChild(so); shop.appendChild(sr);
       wrap.appendChild(shop);
+      var xt=el("div","tile");
+      var xn=el("div","tn"); xn.textContent="⭐ Tâche ponctuelle"; xt.appendChild(xn);
+      var xs=el("div","ts"); xs.textContent="Donner une tâche à un ou plusieurs enfants, pour un jour"; xt.appendChild(xs);
+      var xr=el("div","tb"), xo=el("button","go"); xo.type="button"; xo.textContent="Ajouter";
+      xo.onclick=function(){ location.href="ponctuel.html?back=tablet.html"; };
+      xr.appendChild(xo); xt.appendChild(xr);
+      wrap.appendChild(xt);
       box.appendChild(wrap);
     }
 

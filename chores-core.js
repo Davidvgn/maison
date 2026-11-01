@@ -27,6 +27,8 @@
   var BLOCKS = [
     // État de la maison (lave-vaisselle, sèche-linge, étendage) : voir house.js ; n'apparaît que s'il y a quelque chose à faire
     {key:"maison",    emoji:"🏡", title:"Pour la maison", sub:"",                     gate:false},
+    // Tâches ponctuelles données par les parents pour ce jour (voir extraTasks) ; chacune dit si elle bloque l'écran
+    {key:"ponctuel",  emoji:"⭐", title:"En plus aujourd'hui", sub:"de la part des parents", gate:true},
     {key:"matin",    emoji:"☀️", title:"Le matin",       sub:"",                     gate:true},
     {key:"rentrant", emoji:"🏠", title:"En rentrant",    sub:"après l'école",        gate:true},
     {key:"apprendre",emoji:"📖", title:"Apprendre et lire", sub:"",                     gate:true},
@@ -192,6 +194,7 @@
       t.push({block:"menage", emoji:"🧽", label:"Passer la lingette", note:"1 fois ce week-end", scope:"weekend"});
       t.push({block:"menage", emoji:"🗑️", label:"Vider la corbeille de ma chambre", note:"1 fois ce week-end", scope:"weekend"});
       t.push({block:"menage", emoji:"🪟", label:"Nettoyer ma fenêtre (à l'intérieur seulement)", note:"1 fois ce week-end · jamais l'extérieur", scope:"weekend", href:"guide.html?g=fenetre&kid="+cfg.key, linkLabel:"▶ Voir comment faire"});
+      t.push({block:"menage", emoji:"🪞", label:"Nettoyer le miroir de ma chambre", note:"1 fois ce week-end", scope:"weekend"});
       if(cfg.managedBy) t.push({block:"menage", emoji:"💬", label:"Écouter le retour de "+cfg.managedBy.name+" sur ma fenêtre", note:"Il est mon manager : je corrige ce qu'il me montre", scope:"weekend"});
       if(cfg.manages) t.push({block:"menage", emoji:"🧑‍🏫", label:"Vérifier la fenêtre de "+cfg.manages.name+" (je suis son manager)", note:"Après que "+cfg.manages.name+" a fini : je contrôle, puis je lui fais mon retour", scope:"weekend", href:"guide.html?g=verif&kid="+cfg.key+"&of="+cfg.manages.key, linkLabel:"▶ Voir quoi vérifier"});
     }
@@ -279,6 +282,28 @@
     try{ if(val) localStorage.setItem(storageKey(child,task,today),val); else localStorage.removeItem(storageKey(child,task,today)); }catch(e){}
   }
 
+  // Texte sans balises : les libellés donnés par les parents sont affichés tels quels dans les pages
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+  // Tâches ponctuelles du jour pour cet enfant : /extra/<jour>/<enfant>_<id> = "1|libellé" (1 = avant l'écran, 0 = facultative).
+  // La coche est une coche ordinaire (/done/<jour>/<enfant>/ponctuel_<id>) : mêmes règles, même affichage.
+  function extraTasks(child, today){
+    if(!window.Sync || !synced(child)) return [];
+    var g=window.Sync.getGroup("extra", ymd(today)), keys=[], out=[], k, i, m, v, p, optional;
+    for(k in g){ if(Object.prototype.hasOwnProperty.call(g,k)) keys.push(k); }
+    keys.sort();   // l'identifiant commence par l'heure de création : ordre de création
+    for(i=0;i<keys.length;i++){
+      m=/^([a-z]+)_([a-z0-9]+)$/.exec(keys[i]);
+      if(!m || m[1]!==child) continue;
+      v=String(g[keys[i]]); p=v.indexOf("|");
+      optional=(p===1 && v.charAt(0)==="0");
+      var label=p===1?v.slice(2):v;
+      if(!label) continue;
+      out.push({block:"ponctuel", emoji:"⭐", label:esc(label), scope:"daily", optional:optional, gate:!optional, id:"ponctuel_"+m[2], extra:true});
+    }
+    return out;
+  }
+
   // Tâches à afficher : une tâche « 1 fois ce week-end » faite samedi disparaît dimanche.
   function visibleTasks(child, cfg, today, tomorrow){
     var td=ymd(today);
@@ -287,8 +312,10 @@
       var v=doneValue(child,t,today);
       return !(v && String(v).slice(0,10)<td);
     });
-    if(houseLive(child)) list=window.House.tasks(child, isRestDay(today)).concat(list);
-    return list;
+    var before=[];
+    if(houseLive(child)) before=window.House.tasks(child, isRestDay(today));
+    // ordre des blocs : la maison, puis les tâches ponctuelles, puis la journée habituelle
+    return before.concat(extraTasks(child,today)).concat(list);
   }
 
   // La page déclare les enfants qu'elle affiche : reçoit les coches des autres appareils en direct.
@@ -300,7 +327,7 @@
       window.Sync.watch(ps, kids, function(){
         if(!uploaded && window.Sync.ready()){ uploaded=true; uploadLocal(ps, kids); }
         if(onChange) onChange();
-      });
+      }, ["extra"]);
     }
     if(!test) pruneLocal(ps);   // mode test : on ne fait pas le ménage du vrai jour
   }

@@ -1,0 +1,23 @@
+/* Tâche ponctuelle (ponctuel.html) : se greffe sur shop.css */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0;}
+.chip{border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:99px;padding:8px 14px;min-height:44px;
+  font-size:1rem;font-weight:800;cursor:pointer;}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.chip.kid.on{color:#fff;}
+#sugg .chip{font-weight:700;text-align:left;border-radius:14px;}
+.libbox{max-height:300px;overflow-y:auto;border:2px solid var(--line);border-radius:14px;padding:4px 8px 8px;margin-top:8px;background:#fff;}
+.libitem{padding:11px 8px;border-bottom:1px solid var(--line);font-weight:700;cursor:pointer;line-height:1.25;}
+.libitem:active{background:var(--ok-bg);}
+.cal-head{display:flex;align-items:center;margin:6px 0;}
+.cal-title{flex:1;text-align:center;font-weight:800;font-size:1.05rem;}
+.cal-grid{display:flex;flex-wrap:wrap;}
+.cal-dow,.cal-empty,.cal-day{width:14.2857%;text-align:center;}
+.cal-dow{font-size:.75rem;font-weight:800;color:var(--muted);padding:4px 0;}
+.cal-day{border:2px solid transparent;background:transparent;color:var(--ink);font-size:1rem;font-weight:700;
+  height:44px;border-radius:12px;cursor:pointer;padding:0;}
+.cal-day:disabled{color:#c3cbd8;cursor:default;}
+.cal-day.today{border-color:var(--line);}
+.cal-day.sel{background:var(--accent);color:#fff;border-color:var(--accent);}
+.opt-line{display:flex;align-items:center;font-weight:800;font-size:1.05rem;}
+.opt-line input{width:24px;height:24px;margin-right:10px;}
+.btn.big{width:100%;margin:12px 0 2px;font-size:1.1rem;min-height:52px;}

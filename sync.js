@@ -15,6 +15,8 @@
    Courses : /shop/items/<id> = "Nom|rayon", /shop/need/<id> = "quantité|qui|panier",
              /shop/inbox/<id> = "texte|qui", /shop/note/<id> = "précision" (parents) :
              liste de courses partagée (voir shop.js)
+   Ponctuel: /extra/<jour>/<enfant>_<id> = "1|libellé" (1 = à faire avant l'écran, 0 = facultatif) :
+             tâche donnée par les parents pour un jour précis (voir ponctuel.js, chores-core.js)
    Droits  : /members/<uid> = "jeremy" | "liam" | "nina" | "famille"
              (écrit à la main dans la console Firebase, jamais par l'appli)
    ================================================================ */
@@ -222,7 +224,7 @@
   // ---- Coches reçues de la base : tree[période][enfant][tâche] = valeur ----
   var tree = {}, periods = [], watchedKids = [], streams = [], listeners = [];
   // Racines annexes, hors coches du jour : une racine par espace partagé (maison, courses)
-  var AUX = {house: 1, shop: 1};
+  var AUX = {house: 1, shop: 1, extra: 1};
   function isAux(r){ return AUX.hasOwnProperty(r); }
   var knownRoots = {};           // racine annexe déjà reçue au moins une fois (ou lue dans le cache)
   var extraRoots = [];           // racines annexes demandées par la page (ex. ["shop"])
@@ -286,6 +288,29 @@
   function clearShop(group){
     if(!signedIn()) return;
     enqueue("shop/" + group, null);
+  }
+  // Tâches ponctuelles : /extra/<jour>/<clé> (réservé aux parents par les droits)
+  function setExtra(day, key, v){
+    if(!signedIn()) return;
+    enqueue("extra/" + day + "/" + key, v);
+  }
+  function clearExtra(day){
+    if(!signedIn()) return;
+    enqueue("extra/" + day, null);
+  }
+  // Noms des groupes d'une racine annexe (ex. les jours de /extra), y compris ce que cet appareil vient d'écrire
+  function groups(root){
+    var out = {}, k, i, p, segs, res = [];
+    if(tree[root]){ for(k in tree[root]){ if(has(tree[root], k)) out[k] = 1; } }
+    for(i = 0; i < pending.length; i++){
+      p = pending[i].p;
+      if(p.indexOf(root + "/") !== 0) continue;
+      segs = p.split("/");
+      if(segs.length >= 2 && segs[1]) out[segs[1]] = 1;
+    }
+    for(k in out){ if(has(out, k)) res.push(k); }
+    res.sort();
+    return res;
   }
   // Tous les éléments d'un groupe (ce que la base a envoyé, avec par-dessus ce que cet appareil vient d'écrire)
   function getGroup(root, group){
@@ -365,7 +390,7 @@
       if(inflight !== op) return;
       if(err){ inflight = null; if(err !== "out") scheduleRetry(); notify(); return; }
       var del = op.v == null;
-      var root = /^(house|shop)\//.test(op.p) ? "/" : "/done/";
+      var root = /^(house|shop|extra)\//.test(op.p) ? "/" : "/done/";
       var url = DB + root + op.p + ".json?" + (del ? "" : "print=silent&") + "auth=" + encodeURIComponent(tok);
       req(del ? "DELETE" : "PUT", url, del ? null : JSON.stringify(op.v), "application/json", 15000, function(st){
         if(inflight !== op) return;
@@ -701,7 +726,10 @@
     setHouse: setHouse,
     setShop: setShop,
     clearShop: clearShop,
+    setExtra: setExtra,
+    clearExtra: clearExtra,
     getGroup: getGroup,
+    groups: groups,
     houseKnown: function(){ return !!knownRoots.house; },
     known: function(root){ return !!knownRoots[root]; },
     watch: watch,
