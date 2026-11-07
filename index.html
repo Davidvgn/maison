@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="theme-color" content="#5b8def" />
 <title>Les pages de la maison</title>
+<script>
+// Un appareil connecté en compte « famille » (parents) arrive directement sur la vue tablette : courses, tâches ponctuelles, maison, les trois enfants.
+// index.html?tout=1 affiche quand même la liste complète des pages.
+(function(){
+  try{
+    var a=JSON.parse(localStorage.getItem("maison:auth")||"null");
+    if(a && a.role==="famille" && location.search.indexOf("tout=1")===-1) location.replace("tablet.html");
+  }catch(e){}
+})();
+</script>
 <style>
   *{box-sizing:border-box;}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;

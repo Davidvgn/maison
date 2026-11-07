@@ -111,6 +111,8 @@
         if(err){ say("err", err); return; }
         say("ok","C'est fait : cet appareil est connecté pour "+names(role)+".");
         refresh();
+        // un parent arrive tout de suite sur la vue tablette (courses, tâches ponctuelles…)
+        if(role==="famille") setTimeout(function(){ location.href=page(role); }, 1200);
       });
       return false;
     };
