@@ -327,6 +327,17 @@
     h.appendChild(el("span", "n", String(left.length)));
     b.appendChild(h);
     if(!taken.length) ui.showTaken = false;   // l'ouverture ne doit pas survivre à « Terminer » : la prise suivante doit disparaître
+    // Ce qui est déjà pris : en haut, sous le titre, pour retrouver et remettre une ligne prise par erreur sans défiler toute la liste
+    if(taken.length){
+      b.appendChild(btn(ui.showTaken ? "▲ Cacher ce que j'ai pris (" + taken.length + ")" : "✓ Ce que j'ai pris (" + taken.length + ") · voir ou remettre", "ghost wide", function(){
+        ui.showTaken = !ui.showTaken; render();
+      }));
+      if(ui.showTaken){
+        b.appendChild(el("div", "sec", "Déjà pris · appuie sur une ligne pour la remettre dans la liste"));
+        taken.forEach(function(r){ b.appendChild(takeRow(r, true)); });
+        if(left.length) b.appendChild(el("div", "sec", "🛒 Il reste à prendre"));
+      }
+    }
     if(!lines.length){
       b.appendChild(el("div", "empty", "La liste est vide. Prépare-la dans la vue « Préparer »."));
     } else if(!left.length){
@@ -340,15 +351,6 @@
       b.appendChild(el("div", "sec", sec.emoji + " " + sec.name));
       rows.forEach(function(r){ b.appendChild(takeRow(r, false)); });
     });
-    if(taken.length){
-      b.appendChild(btn((ui.showTaken ? "Cacher" : "Voir aussi") + " les articles pris (" + taken.length + ")", "ghost", function(){
-        ui.showTaken = !ui.showTaken; render();
-      }));
-      if(ui.showTaken){
-        b.appendChild(el("div", "sec", "Déjà pris · appuie sur une ligne pour la remettre dans la liste"));
-        taken.forEach(function(r){ b.appendChild(takeRow(r, true)); });
-      }
-    }
     box.appendChild(b);
   }
   function takeRow(r, done){
